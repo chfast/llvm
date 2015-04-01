@@ -2017,7 +2017,69 @@ void DAGTypeLegalizer::ExpandIntRes_MUL(SDNode *N,
     LC = RTLIB::MUL_I64;
   else if (VT == MVT::i128)
     LC = RTLIB::MUL_I128;
-  assert(LC != RTLIB::UNKNOWN_LIBCALL && "Unsupported MUL!");
+  else {
+    // Implement multiplication using 8 half precision mul nodes
+
+    SDValue LLL, LLH, RLL, RLH;
+    GetExpandedInteger(LL, LLL, LLH);
+    GetExpandedInteger(RL, RLL, RLH);
+
+    auto quarter = LLL.getValueType().getSizeInBits();
+
+    LLL = DAG.getNode(ISD::ZERO_EXTEND, dl, NVT, LLL);
+    LLH = DAG.getNode(ISD::ZERO_EXTEND, dl, NVT, LLH);
+    RLL = DAG.getNode(ISD::ZERO_EXTEND, dl, NVT, RLL);
+    RLH = DAG.getNode(ISD::ZERO_EXTEND, dl, NVT, RLH);
+
+    // Multiply parts of operads
+    auto T1 = DAG.getNode(ISD::MUL, dl, NVT, LLL, RLL);
+    auto T2 = DAG.getNode(ISD::MUL, dl, NVT, LLH, RLL);
+    auto T3 = DAG.getNode(ISD::MUL, dl, NVT, LH,  RLL);
+    auto T4 = DAG.getNode(ISD::MUL, dl, NVT, LLL, RLH);
+    auto T5 = DAG.getNode(ISD::MUL, dl, NVT, LLH, RLH);
+    auto T6 = DAG.getNode(ISD::MUL, dl, NVT, LH,  RLH);
+    auto T7 = DAG.getNode(ISD::MUL, dl, NVT, LLL, RH);
+    auto T8 = DAG.getNode(ISD::MUL, dl, NVT, LLH, RH);
+
+    // Align and extend multiplications results to full precision
+    auto W1 = DAG.getNode(ISD::ZERO_EXTEND, dl, VT, T1);
+    auto W2 = DAG.getNode(ISD::SHL, dl, VT,
+                          DAG.getNode(ISD::ZERO_EXTEND, dl, VT, T2),
+                          DAG.getConstant(1 * quarter, VT));
+    auto W3 = DAG.getNode(ISD::SHL, dl, VT,
+                          DAG.getNode(ISD::ZERO_EXTEND, dl, VT, T3),
+                          DAG.getConstant(2 * quarter, VT));
+    auto W4 = DAG.getNode(ISD::SHL, dl, VT,
+                          DAG.getNode(ISD::ZERO_EXTEND, dl, VT, T4),
+                          DAG.getConstant(1 * quarter, VT));
+    auto W5 = DAG.getNode(ISD::SHL, dl, VT,
+                          DAG.getNode(ISD::ZERO_EXTEND, dl, VT, T5),
+                          DAG.getConstant(2 * quarter, VT));
+    auto W6 = DAG.getNode(ISD::SHL, dl, VT,
+                          DAG.getNode(ISD::ZERO_EXTEND, dl, VT, T6),
+                          DAG.getConstant(3 * quarter, VT));
+    auto W7 = DAG.getNode(ISD::SHL, dl, VT,
+                          DAG.getNode(ISD::ZERO_EXTEND, dl, VT, T7),
+                          DAG.getConstant(2 * quarter, VT));
+    auto W8 = DAG.getNode(ISD::SHL, dl, VT,
+                          DAG.getNode(ISD::ZERO_EXTEND, dl, VT, T8),
+                          DAG.getConstant(3 * quarter, VT));
+
+    // Sum up all the parts
+    auto P = DAG.getNode(ISD::ADD, dl, VT,
+                         DAG.getNode(ISD::ADD, dl, VT,
+                                     DAG.getNode(ISD::ADD, dl, VT, W1, W2),
+                                     DAG.getNode(ISD::ADD, dl, VT, W3, W4)),
+                         DAG.getNode(ISD::ADD, dl, VT,
+                                     DAG.getNode(ISD::ADD, dl, VT, W5, W6),
+                                     DAG.getNode(ISD::ADD, dl, VT, W7, W8)));
+
+    Lo = DAG.getNode(ISD::TRUNCATE, dl, NVT, P);
+    Hi = DAG.getNode(ISD::TRUNCATE, dl, NVT,
+                     DAG.getNode(ISD::SRL, dl, VT, P,
+                                 DAG.getConstant(2 * quarter, VT)));
+    return;
+  }
 
   SDValue Ops[2] = { N->getOperand(0), N->getOperand(1) };
   SplitInteger(TLI.makeLibCall(DAG, LC, VT, Ops, 2, true/*irrelevant*/,
