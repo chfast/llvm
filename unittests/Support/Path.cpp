@@ -322,6 +322,12 @@ TEST(Support, HomeDirectory) {
   }
 }
 
+TEST(Support, UserCacheDirectory) {
+  SmallString<13> cacheDir;
+  auto status = path::user_cache_directory(cacheDir);
+  EXPECT_TRUE(status ^ cacheDir.empty());
+}
+
 class FileSystemTest : public testing::Test {
 protected:
   /// Unique temporary directory in which all created filesystem entities must
