@@ -771,6 +771,10 @@ bool home_directory(SmallVectorImpl<char> &result) {
   return getKnownFolderPath(FOLDERID_Profile, result);
 }
 
+bool user_cache_directory(SmallVectorImpl<char> &result) {
+  return getKnownFolderPath(FOLDERID_LocalAppData, result);
+}
+
 static bool getTempDirEnvVar(const char *Var, SmallVectorImpl<char> &Res) {
   SmallVector<wchar_t, 128> NameUTF16;
   if (windows::UTF8ToUTF16(Var, NameUTF16))

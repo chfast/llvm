@@ -325,6 +325,12 @@ void system_temp_directory(bool erasedOnReboot, SmallVectorImpl<char> &result);
 /// @result True if a home directory is set, false otherwise.
 bool home_directory(SmallVectorImpl<char> &result);
 
+/// Get the user's cache directory.
+///
+/// @param result Holds the resulting path name.
+/// @result True if a cache directory path is set, false otherwise.
+bool user_cache_directory(SmallVectorImpl<char> &result);
+
 /// @brief Has root name?
 ///
 /// root_name != ""
