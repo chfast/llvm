@@ -588,21 +588,20 @@ bool getDarwinConfDir(bool TempDir, SmallVectorImpl<char> &Result) {
 }
 
 bool user_cache_directory(SmallVectorImpl<char> &result) {
-
-  /// First try using XDS_CACHE_HOME env variable,
-  /// as specified in XDG Base Directory Specification at
-  /// http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
-  if (char *xdsCacheDir = std::getenv("XDS_CACHE_HOME")) {
+  // First try using XDS_CACHE_HOME env variable,
+  // as specified in XDG Base Directory Specification at
+  // http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
+  if (const char *xdsCacheDir = std::getenv("XDS_CACHE_HOME")) {
     result.clear();
     result.append(xdsCacheDir, xdsCacheDir + strlen(xdsCacheDir));
     return true;
   }
 
-  /// Try Darwin configuration query
+  // Try Darwin configuration query
   if (getDarwinConfDir(false, result))
     return true;
 
-  /// Use "$HOME/.cache" if $HOME is available
+  // Use "$HOME/.cache" if $HOME is available
   if (home_directory(result)) {
     append(result, ".cache");
     return true;

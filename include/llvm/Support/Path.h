@@ -325,9 +325,13 @@ void system_temp_directory(bool erasedOnReboot, SmallVectorImpl<char> &result);
 /// @result True if a home directory is set, false otherwise.
 bool home_directory(SmallVectorImpl<char> &result);
 
-/// Get the user's cache directory.
+/// @brief Get the user's cache directory.
 ///
-/// @param result Holds the resulting path name.
+/// Expect the resulting path to be a directory shared with other
+/// applications/services used by the user. At least an application/service name
+/// should be appended to the path before storing any files.
+///
+/// @param result Holds the resulting path.
 /// @result True if a cache directory path is set, false otherwise.
 bool user_cache_directory(SmallVectorImpl<char> &result);
 
