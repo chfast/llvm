@@ -328,12 +328,18 @@ bool home_directory(SmallVectorImpl<char> &result);
 /// @brief Get the user's cache directory.
 ///
 /// Expect the resulting path to be a directory shared with other
-/// applications/services used by the user. At least an application/service name
-/// should be appended to the path before storing any files.
+/// applications/services used by the user. Params path1 to path3 can be used to
+/// append additional directory names to the resulting path. Recommended pattern
+/// is <user_cache_directory>/<vendor>/<application>.
 ///
 /// @param result Holds the resulting path.
+/// @param path1 Additional path to be appended to the user's cache directory
+/// path. "" can be used to append nothing.
+/// @param path2 Second additional path to be appended.
+/// @param path3 Third additional path to be appended.
 /// @result True if a cache directory path is set, false otherwise.
-bool user_cache_directory(SmallVectorImpl<char> &result);
+bool user_cache_directory(SmallVectorImpl<char> &result, const Twine &path1,
+                          const Twine &path2 = "", const Twine &path3 = "");
 
 /// @brief Has root name?
 ///

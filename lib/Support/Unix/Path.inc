@@ -585,9 +585,8 @@ bool getDarwinConfDir(bool TempDir, SmallVectorImpl<char> &Result) {
   #endif
   return false;
 }
-}
 
-bool user_cache_directory(SmallVectorImpl<char> &result) {
+bool getUserCacheDir(SmallVectorImpl<char> &result) {
   // First try using XDS_CACHE_HOME env variable,
   // as specified in XDG Base Directory Specification at
   // http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
@@ -609,6 +608,8 @@ bool user_cache_directory(SmallVectorImpl<char> &result) {
 
   return false;
 }
+}
+
 
 static const char *getEnvTempDir() {
   // Check whether the temporary directory is specified by an environment

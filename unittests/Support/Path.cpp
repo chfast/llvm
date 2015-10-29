@@ -324,8 +324,20 @@ TEST(Support, HomeDirectory) {
 
 TEST(Support, UserCacheDirectory) {
   SmallString<13> cacheDir;
-  auto status = path::user_cache_directory(cacheDir);
+  SmallString<20> cacheDir2;
+  auto status = path::user_cache_directory(cacheDir, "");
   EXPECT_TRUE(status ^ cacheDir.empty());
+
+  if (status) {
+    EXPECT_TRUE(path::user_cache_directory(cacheDir2, "")); // should succeed
+    EXPECT_EQ(cacheDir, cacheDir2); // and return same paths
+
+    EXPECT_TRUE(path::user_cache_directory(cacheDir, "A", "B", "file.c"));
+    auto it = path::rbegin(cacheDir);
+    EXPECT_EQ("file.c", *it);
+    EXPECT_EQ("B", *++it);
+    EXPECT_EQ("A", *++it);
+  }
 }
 
 class FileSystemTest : public testing::Test {

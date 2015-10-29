@@ -1094,3 +1094,20 @@ std::error_code directory_entry::status(file_status &result) const {
 #if defined(LLVM_ON_WIN32)
 #include "Windows/Path.inc"
 #endif
+
+namespace llvm {
+namespace sys {
+namespace path {
+
+bool user_cache_directory(SmallVectorImpl<char> &result, const Twine &path1,
+                          const Twine &path2, const Twine &path3) {
+  if (getUserCacheDir(result)) {
+    append(result, path1, path2, path3);
+    return true;
+  }
+  return false;
+}
+
+} // end namespace path
+} // end namsspace sys
+} // end namespace llvm
