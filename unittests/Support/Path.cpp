@@ -323,20 +323,31 @@ TEST(Support, HomeDirectory) {
 }
 
 TEST(Support, UserCacheDirectory) {
-  SmallString<13> cacheDir;
-  SmallString<20> cacheDir2;
-  auto status = path::user_cache_directory(cacheDir, "");
-  EXPECT_TRUE(status ^ cacheDir.empty());
+  SmallString<13> CacheDir;
+  SmallString<20> CacheDir2;
+  auto Status = path::user_cache_directory(CacheDir, "");
+  EXPECT_TRUE(Status ^ CacheDir.empty());
 
-  if (status) {
-    EXPECT_TRUE(path::user_cache_directory(cacheDir2, "")); // should succeed
-    EXPECT_EQ(cacheDir, cacheDir2); // and return same paths
+  if (Status) {
+    EXPECT_TRUE(path::user_cache_directory(CacheDir2, "")); // should succeed
+    EXPECT_EQ(CacheDir, CacheDir2); // and return same paths
 
-    EXPECT_TRUE(path::user_cache_directory(cacheDir, "A", "B", "file.c"));
-    auto it = path::rbegin(cacheDir);
-    EXPECT_EQ("file.c", *it);
-    EXPECT_EQ("B", *++it);
-    EXPECT_EQ("A", *++it);
+    EXPECT_TRUE(path::user_cache_directory(CacheDir, "A", "B", "file.c"));
+    auto It = path::rbegin(CacheDir);
+    EXPECT_EQ("file.c", *It);
+    EXPECT_EQ("B", *++It);
+    EXPECT_EQ("A", *++It);
+    auto ParentDir = *++It;
+
+    // Test Unicode: "<user_cache_dir>/(pi)r^2/aleth.0"
+    EXPECT_TRUE(path::user_cache_directory(CacheDir2, "\xCF\x80r\xC2\xB2",
+                                           "\xE2\x84\xB5.0"));
+    auto It2 = path::rbegin(CacheDir2);
+    EXPECT_EQ("\xE2\x84\xB5.0", *It2);
+    EXPECT_EQ("\xCF\x80r\xC2\xB2", *++It2);
+    auto ParentDir2 = *++It2;
+
+    EXPECT_EQ(ParentDir, ParentDir2);
   }
 }
 

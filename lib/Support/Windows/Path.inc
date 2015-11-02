@@ -766,8 +766,8 @@ bool getKnownFolderPath(KNOWNFOLDERID folderId, SmallVectorImpl<char> &result) {
   return ok;
 }
 
-bool getUserCacheDir(SmallVectorImpl<char> &result) {
-  return getKnownFolderPath(FOLDERID_LocalAppData, result);
+bool getUserCacheDir(SmallVectorImpl<char> &Result) {
+  return getKnownFolderPath(FOLDERID_LocalAppData, Result);
 }
 }
 
