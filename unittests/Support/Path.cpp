@@ -351,6 +351,63 @@ TEST(Support, UserCacheDirectory) {
   }
 }
 
+TEST(Support, TempDirectory) {
+  SmallString<32> TempDir;
+  path::system_temp_directory(false, TempDir);
+  EXPECT_TRUE(!TempDir.empty());
+  TempDir.clear();
+  path::system_temp_directory(true, TempDir);
+  EXPECT_TRUE(!TempDir.empty());
+
+#ifdef LLVM_ON_WIN32
+  const wchar_t *OrigTmp = _wgetenv(L"TMP");
+  const wchar_t *OrigTemp = _wgetenv(L"TEMP");
+
+  _wputenv_s(L"TMP", L"C:\\OtherFolder");
+  path::system_temp_directory(true, TempDir);
+  EXPECT_EQ("C:\\OtherFolder", TempDir);
+
+  _wputenv_s(L"TMP", L"C:/Unix/Path/Seperators");
+  path::system_temp_directory(true, TempDir);
+  EXPECT_EQ("C:\\Unix\\Path\\Seperators", TempDir);
+
+  _wputenv_s(L"TMP", L"Local Path");
+  path::system_temp_directory(true, TempDir);
+  EXPECT_NE("Local Path", TempDir);
+  EXPECT_TRUE(path::is_absolute(TempDir));
+  EXPECT_EQ("Local Path", path::filename(TempDir));
+
+  SmallString<270> Expected{"C:\\Temp\\AB\\123456789"};
+  while (Expected.size() < 260)
+    Expected.append("\\DirNameWith19Charss");
+  ASSERT_EQ(260, Expected.size());
+
+  _putenv_s("TMP", Expected.c_str());
+  path::system_temp_directory(true, TempDir);
+  EXPECT_EQ(Expected, TempDir);
+
+  // Path longer than 260 is invalid
+  Expected.append("X");
+  ASSERT_EQ(261, Expected.size());
+  path::system_temp_directory(true, TempDir);
+  EXPECT_NE(Expected, TempDir);
+
+  _wputenv_s(L"TMP", L"");
+  _wputenv_s(L"TEMP", L"C:\\Valid\\Path");
+  path::system_temp_directory(true, TempDir);
+  EXPECT_EQ("C:\\Valid\\Path", TempDir);
+
+  // Test Unicode paths
+  _wputenv_s(L"TMP", L"C:\\2\x03C0r-\x00B5\x00B3\\\x2135\x2080");
+  path::system_temp_directory(true, TempDir);
+  EXPECT_EQ("C:\\2\xCF\x80r-\xC2\xB5\xC2\xB3\\\xE2\x84\xB5\xE2\x82\x80",
+            TempDir);
+
+  _wputenv_s(L"TEMP", OrigTemp);
+  _wputenv_s(L"TMP", OrigTmp);
+#endif
+}
+
 class FileSystemTest : public testing::Test {
 protected:
   /// Unique temporary directory in which all created filesystem entities must
