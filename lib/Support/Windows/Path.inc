@@ -798,8 +798,7 @@ static bool getTempDirEnvVar(SmallVectorImpl<char> &Res) {
   return false;
 }
 
-void system_temp_directory(bool ErasedOnReboot, SmallVectorImpl<char> &Result) {
-  (void)ErasedOnReboot;
+static void getTempDir(SmallVectorImpl<char> &Result) {
   Result.clear();
 
   // Check whether the temporary directory is specified by an environment var.
@@ -816,6 +815,13 @@ void system_temp_directory(bool ErasedOnReboot, SmallVectorImpl<char> &Result) {
   // Fall back to a system default.
   const char *DefaultResult = "C:\\Temp";
   Result.append(DefaultResult, DefaultResult + strlen(DefaultResult));
+}
+
+void system_temp_directory(bool ErasedOnReboot, SmallVectorImpl<char> &Result) {
+  if (!ErasedOnReboot && user_cache_directory(Result, ""))
+    return;
+
+  temp_directory(Result, "");
 }
 } // end namespace path
 

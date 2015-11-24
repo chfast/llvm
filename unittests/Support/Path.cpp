@@ -322,6 +322,46 @@ TEST(Support, HomeDirectory) {
   }
 }
 
+static std::string path2regex(std::string Path) {
+  size_t Pos = 0;
+  while ((Pos = Path.find('\\', Pos)) != std::string::npos) {
+    Path.replace(Pos, 1, "\\\\");
+    Pos += 2;
+  }
+  return Path;
+}
+
+/// Helper for running known dir test that depends on enviroment variables in
+/// separated process. This allows checking different values of enviroment
+/// variables without messing up the environment of the current process.
+#define EXPECT_DIR(test, expected)                                             \
+  EXPECT_EXIT(                                                                 \
+      {                                                                        \
+        SmallString<300> Dir;                                                  \
+        test;                                                                  \
+        raw_os_ostream(std::cerr) << Dir;                                      \
+        std::exit(0);                                                          \
+      },                                                                       \
+      ::testing::ExitedWithCode(0), path2regex(expected))
+
+/// Helper for running home dir test in separated process, @see EXPECT_DIR.
+#define EXPECT_HOME_DIR(prepare, expected)                                     \
+  EXPECT_DIR(                                                                  \
+      {                                                                        \
+        prepare;                                                               \
+        path::home_directory(Dir);                                             \
+      },                                                                       \
+      expected)
+
+/// Helper for running temp dir test in separated process, @see EXPECT_DIR.
+#define EXPECT_TEMP_DIR(prepare, expected)                                     \
+  EXPECT_DIR(                                                                  \
+      {                                                                        \
+        prepare;                                                               \
+        path::temp_directory(Dir, "");                                         \
+      },                                                                       \
+      expected)
+
 TEST(Support, UserCacheDirectory) {
   SmallString<13> CacheDir;
   SmallString<20> CacheDir2;
@@ -358,30 +398,41 @@ TEST(Support, TempDirectory) {
   TempDir.clear();
   path::system_temp_directory(true, TempDir);
   EXPECT_TRUE(!TempDir.empty());
+
+  StringRef TestToken{"<test token>"};
+  SmallString<32> TempDir2{TestToken};
+  path::temp_directory(TempDir2, "");
+  EXPECT_FALSE(TempDir2.empty());
+  EXPECT_FALSE(TempDir2.startswith(TestToken));
+
+  path::temp_directory(TempDir, "");
+  EXPECT_EQ(TempDir2, TempDir);
+
+  path::temp_directory(TempDir, "TempInc", "TempApp", "file.tmp");
+  auto It = path::rbegin(TempDir);
+  EXPECT_EQ("file.tmp", *It);
+  EXPECT_EQ("TempApp", *++It);
+  EXPECT_EQ("TempInc", *++It);
+  auto ParentDir = *++It;
+
+  // Test Unicode: "<user_cache_dir>/(pi)r^2/aleth.0"
+  path::temp_directory(TempDir2, "\xCF\x80r\xC2\xB2", "\xE2\x84\xB5.0");
+  auto It2 = path::rbegin(TempDir2);
+  EXPECT_EQ("\xE2\x84\xB5.0", *It2);
+  EXPECT_EQ("\xCF\x80r\xC2\xB2", *++It2);
+  auto ParentDir2 = *++It2;
+
+  EXPECT_EQ(ParentDir, ParentDir2);
 }
+
+#ifdef LLVM_ON_UNIX
+TEST(SupportDeathTest, TempDirectoryOnUnix) {
+  EXPECT_TEMP_DIR(setenv("TMPDIR", "/home/LLVMUser/.tmp", true),
+                  "/home/LLVMUser/.tmp");
+}
+#endif
 
 #ifdef LLVM_ON_WIN32
-static std::string path2regex(std::string Path) {
-  size_t Pos = 0;
-  while ((Pos = Path.find('\\', Pos)) != std::string::npos) {
-    Path.replace(Pos, 1, "\\\\");
-    Pos += 2;
-  }
-  return Path;
-}
-
-/// Helper for running temp dir test in separated process. See below.
-#define EXPECT_TEMP_DIR(prepare, expected)                                     \
-  EXPECT_EXIT(                                                                 \
-      {                                                                        \
-        prepare;                                                               \
-        SmallString<300> TempDir;                                              \
-        path::system_temp_directory(true, TempDir);                            \
-        raw_os_ostream(std::cerr) << TempDir;                                  \
-        std::exit(0);                                                          \
-      },                                                                       \
-      ::testing::ExitedWithCode(0), path2regex(expected))
-
 TEST(SupportDeathTest, TempDirectoryOnWindows) {
   // In this test we want to check how system_temp_directory responds to
   // different values of specific env vars. To prevent corrupting env vars of

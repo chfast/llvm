@@ -1134,6 +1134,12 @@ namespace llvm {
 namespace sys {
 namespace path {
 
+void temp_directory(SmallVectorImpl<char> &Result, const Twine &Path1,
+                    const Twine &Path2, const Twine &Path3) {
+  getTempDir(Result);
+  append(Result, Path1, Path2, Path3);
+}
+
 bool user_cache_directory(SmallVectorImpl<char> &Result, const Twine &Path1,
                           const Twine &Path2, const Twine &Path3) {
   if (getUserCacheDir(Result)) {

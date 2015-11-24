@@ -325,6 +325,9 @@ void system_temp_directory(bool erasedOnReboot, SmallVectorImpl<char> &result);
 /// @result True if a home directory is set, false otherwise.
 bool home_directory(SmallVectorImpl<char> &result);
 
+void temp_directory(SmallVectorImpl<char> &Result, const Twine &Path1,
+                    const Twine &Path2 = "", const Twine &Path3 = "");
+
 /// @brief Get the user's cache directory.
 ///
 /// Expect the resulting path to be a directory shared with other

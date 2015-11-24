@@ -560,12 +560,14 @@ bool home_directory(SmallVectorImpl<char> &result) {
   return false;
 }
 
-static bool getDarwinConfDir(bool TempDir, SmallVectorImpl<char> &Result) {
-  #if defined(_CS_DARWIN_USER_TEMP_DIR) && defined(_CS_DARWIN_USER_CACHE_DIR)
+enum class DarwinConfDir : bool { Temp, Cache };
+
+static bool getDarwinConfDir(DarwinConfDir Dir, SmallVectorImpl<char> &Result) {
+#if defined(_CS_DARWIN_USER_TEMP_DIR) && defined(_CS_DARWIN_USER_CACHE_DIR)
   // On Darwin, use DARWIN_USER_TEMP_DIR or DARWIN_USER_CACHE_DIR.
   // macros defined in <unistd.h> on darwin >= 9
-  int ConfName = TempDir ? _CS_DARWIN_USER_TEMP_DIR
-                         : _CS_DARWIN_USER_CACHE_DIR;
+  int ConfName = (Dir == DarwinConfDir::Temp) ? _CS_DARWIN_USER_TEMP_DIR
+                                              : _CS_DARWIN_USER_CACHE_DIR;
   size_t ConfLen = confstr(ConfName, nullptr, 0);
   if (ConfLen > 0) {
     do {
@@ -581,7 +583,7 @@ static bool getDarwinConfDir(bool TempDir, SmallVectorImpl<char> &Result) {
 
     Result.clear();
   }
-  #endif
+#endif
   return false;
 }
 
@@ -596,7 +598,7 @@ static bool getUserCacheDir(SmallVectorImpl<char> &Result) {
   }
 
   // Try Darwin configuration query
-  if (getDarwinConfDir(false, Result))
+  if (getDarwinConfDir(DarwinConfDir::Cache, Result))
     return true;
 
   // Use "$HOME/.cache" if $HOME is available
@@ -620,32 +622,39 @@ static const char *getEnvTempDir() {
   return nullptr;
 }
 
-static const char *getDefaultTempDir(bool ErasedOnReboot) {
+static const char *getDefaultTempDir() {
 #ifdef P_tmpdir
   if ((bool)P_tmpdir)
     return P_tmpdir;
 #endif
 
-  if (ErasedOnReboot)
-    return "/tmp";
-  return "/var/tmp";
+  return "/tmp";
+}
+
+static void getTempDir(SmallVectorImpl<char> &Result) {
+  Result.clear();
+
+  if (const char *RequestedDir = getEnvTempDir()) {
+    Result.append(RequestedDir, RequestedDir + strlen(RequestedDir));
+    return;
+  }
+
+  if (getDarwinConfDir(DarwinConfDir::Temp , Result))
+    return;
+
+  const char *RequestedDir = getDefaultTempDir();
+  Result.append(RequestedDir, RequestedDir + strlen(RequestedDir));
 }
 
 void system_temp_directory(bool ErasedOnReboot, SmallVectorImpl<char> &Result) {
-  Result.clear();
+  if (ErasedOnReboot)
+    return getTempDir(Result);
 
-  if (ErasedOnReboot) {
-    // There is no env variable for the cache directory.
-    if (const char *RequestedDir = getEnvTempDir()) {
-      Result.append(RequestedDir, RequestedDir + strlen(RequestedDir));
-      return;
-    }
-  }
-
-  if (getDarwinConfDir(ErasedOnReboot, Result))
+  if (user_cache_directory(Result, ""))
     return;
 
-  const char *RequestedDir = getDefaultTempDir(ErasedOnReboot);
+  const char *RequestedDir = "/var/tmp";
+  Result.clear();
   Result.append(RequestedDir, RequestedDir + strlen(RequestedDir));
 }
 
