@@ -260,6 +260,7 @@ bool Memory::setWritable (MemoryBlock &M, std::string *ErrMsg) {
     (vm_size_t)M.Size, 0, VM_PROT_READ | VM_PROT_WRITE);
   return KERN_SUCCESS == kr;
 #else
+  (void)M, (void)ErrMsg;
   return true;
 #endif
 }
@@ -272,6 +273,7 @@ bool Memory::setExecutable (MemoryBlock &M, std::string *ErrMsg) {
     (vm_size_t)M.Size, 0, VM_PROT_READ | VM_PROT_EXECUTE | VM_PROT_COPY);
   return KERN_SUCCESS == kr;
 #else
+  (void)M, (void)ErrMsg;
   return true;
 #endif
 }
@@ -283,6 +285,7 @@ bool Memory::setRangeWritable(const void *Addr, size_t Size) {
                                 VM_PROT_READ | VM_PROT_WRITE);
   return KERN_SUCCESS == kr;
 #else
+  (void)Addr, (void)Size;
   return true;
 #endif
 }
@@ -294,6 +297,7 @@ bool Memory::setRangeExecutable(const void *Addr, size_t Size) {
                                 VM_PROT_READ | VM_PROT_EXECUTE | VM_PROT_COPY);
   return KERN_SUCCESS == kr;
 #else
+  (void)Addr, (void)Size;
   return true;
 #endif
 }

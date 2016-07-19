@@ -942,8 +942,7 @@ private:
 
 /// Report a serious error, calling any installed error handler. See
 /// ErrorHandling.h.
-LLVM_ATTRIBUTE_NORETURN void report_fatal_error(Error Err,
-                                                bool gen_crash_diag = true);
+LLVM_ATTRIBUTE_NORETURN void report_fatal_error(Error Err);
 
 } // namespace llvm
 

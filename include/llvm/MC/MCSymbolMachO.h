@@ -116,8 +116,7 @@ public:
         assert((1U << Log2Size) == Align && "Invalid 'common' alignment!");
         if (Log2Size > 15)
           report_fatal_error("invalid 'common' alignment '" +
-                             Twine(Align) + "' for '" + getName() + "'",
-                             false);
+                             Twine(Align) + "' for '" + getName() + "'");
         Flags = (Flags & SF_CommonAlignmentMask) |
                 (Log2Size << SF_CommonAlignmentShift);
       }

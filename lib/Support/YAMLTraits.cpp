@@ -654,6 +654,7 @@ void Output::blockScalarString(StringRef &S) {
 }
 
 void Output::setError(const Twine &message) {
+  (void)message;
 }
 
 bool Output::canElideEmptySequence() {

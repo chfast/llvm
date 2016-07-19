@@ -1435,6 +1435,7 @@ void basic_parser_impl::printOptionName(const Option &O,
 //
 bool parser<bool>::parse(Option &O, StringRef ArgName, StringRef Arg,
                          bool &Value) {
+  (void)ArgName;
   if (Arg == "" || Arg == "true" || Arg == "TRUE" || Arg == "True" ||
       Arg == "1") {
     Value = true;
@@ -1453,6 +1454,7 @@ bool parser<bool>::parse(Option &O, StringRef ArgName, StringRef Arg,
 //
 bool parser<boolOrDefault>::parse(Option &O, StringRef ArgName, StringRef Arg,
                                   boolOrDefault &Value) {
+  (void)ArgName;
   if (Arg == "" || Arg == "true" || Arg == "TRUE" || Arg == "True" ||
       Arg == "1") {
     Value = BOU_TRUE;
@@ -1471,6 +1473,7 @@ bool parser<boolOrDefault>::parse(Option &O, StringRef ArgName, StringRef Arg,
 //
 bool parser<int>::parse(Option &O, StringRef ArgName, StringRef Arg,
                         int &Value) {
+  (void)ArgName;
   if (Arg.getAsInteger(0, Value))
     return O.error("'" + Arg + "' value invalid for integer argument!");
   return false;
@@ -1480,7 +1483,7 @@ bool parser<int>::parse(Option &O, StringRef ArgName, StringRef Arg,
 //
 bool parser<unsigned>::parse(Option &O, StringRef ArgName, StringRef Arg,
                              unsigned &Value) {
-
+  (void)ArgName;
   if (Arg.getAsInteger(0, Value))
     return O.error("'" + Arg + "' value invalid for uint argument!");
   return false;
@@ -1491,7 +1494,7 @@ bool parser<unsigned>::parse(Option &O, StringRef ArgName, StringRef Arg,
 bool parser<unsigned long long>::parse(Option &O, StringRef ArgName,
                                        StringRef Arg,
                                        unsigned long long &Value) {
-
+  (void)ArgName;
   if (Arg.getAsInteger(0, Value))
     return O.error("'" + Arg + "' value invalid for uint argument!");
   return false;
@@ -1511,11 +1514,13 @@ static bool parseDouble(Option &O, StringRef Arg, double &Value) {
 
 bool parser<double>::parse(Option &O, StringRef ArgName, StringRef Arg,
                            double &Val) {
+  (void)ArgName;
   return parseDouble(O, Arg, Val);
 }
 
 bool parser<float>::parse(Option &O, StringRef ArgName, StringRef Arg,
                           float &Val) {
+  (void)ArgName;
   double dVal;
   if (parseDouble(O, Arg, dVal))
     return true;

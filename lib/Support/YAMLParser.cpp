@@ -279,7 +279,7 @@ public:
     SM.PrintMessage(Loc, Kind, Message, Ranges, /* FixIts= */ None, ShowColors);
   }
 
-  void setError(const Twine &Message, StringRef::iterator Position) {
+  void setError(const Twine &Message) {
     if (Current >= End)
       Current = End - 1;
 
@@ -288,10 +288,6 @@ public:
     if (!Failed)
       printError(SMLoc::getFromPointer(Current), SourceMgr::DK_Error, Message);
     Failed = true;
-  }
-
-  void setError(const Twine &Message) {
-    setError(Message, Current);
   }
 
   /// @brief Returns true if an error occurred while parsing.
@@ -486,7 +482,7 @@ private:
   bool scanAliasOrAnchor(bool IsAlias);
 
   /// @brief Scan a block scalar starting with | or >.
-  bool scanBlockScalar(bool IsLiteral);
+  bool scanBlockScalar();
 
   /// Scan a chomping indicator in a block scalar header.
   char scanBlockChompingIndicator();
@@ -995,8 +991,7 @@ void Scanner::removeStaleSimpleKeyCandidates() {
                                             i != SimpleKeys.end();) {
     if (i->Line != Line || i->Column + 1024 < Column) {
       if (i->IsRequired)
-        setError( "Could not find expected : for simple key"
-                , i->Tok->Range.begin());
+        setError("Could not find expected : for simple key");
       i = SimpleKeys.erase(i);
     } else
       ++i;
@@ -1314,7 +1309,7 @@ bool Scanner::scanFlowScalar(bool IsDoubleQuoted) {
   }
 
   if (Current == End) {
-    setError("Expected quote at end of scalar", Current);
+    setError("Expected quote at end of scalar");
     return false;
   }
 
@@ -1344,7 +1339,7 @@ bool Scanner::scanPlainScalar() {
     while (!isBlankOrBreak(Current)) {
       if (  FlowLevel && *Current == ':'
           && !(isBlankOrBreak(Current + 1) || *(Current + 1) == ',')) {
-        setError("Found unexpected ':' while scanning a plain scalar", Current);
+        setError("Found unexpected ':' while scanning a plain scalar");
         return false;
       }
 
@@ -1372,7 +1367,7 @@ bool Scanner::scanPlainScalar() {
       StringRef::iterator i = skip_s_white(Tmp);
       if (i != Tmp) {
         if (LeadingBlanks && (Column < indent) && *Tmp == '\t') {
-          setError("Found invalid tab character in indentation", Tmp);
+          setError("Found invalid tab character in indentation");
           return false;
         }
         Tmp = i;
@@ -1393,7 +1388,7 @@ bool Scanner::scanPlainScalar() {
     Current = Tmp;
   }
   if (Start == Current) {
-    setError("Got empty plain scalar", Start);
+    setError("Got empty plain scalar");
     return false;
   }
   Token T;
@@ -1427,7 +1422,7 @@ bool Scanner::scanAliasOrAnchor(bool IsAlias) {
   }
 
   if (Start == Current) {
-    setError("Got empty alias or anchor", Start);
+    setError("Got empty alias or anchor");
     return false;
   }
 
@@ -1498,7 +1493,7 @@ bool Scanner::scanBlockScalarHeader(char &ChompingIndicator,
   }
 
   if (!consumeLineBreakIfPresent()) {
-    setError("Expected a line break after block scalar header", Current);
+    setError("Expected a line break after block scalar header");
     return false;
   }
   return true;
@@ -1508,7 +1503,6 @@ bool Scanner::findBlockScalarIndent(unsigned &BlockIndent,
                                     unsigned BlockExitIndent,
                                     unsigned &LineBreaks, bool &IsDone) {
   unsigned MaxAllSpaceLineCharacters = 0;
-  StringRef::iterator LongestAllSpaceLine;
 
   while (true) {
     advanceWhile(&Scanner::skip_s_space);
@@ -1522,8 +1516,7 @@ bool Scanner::findBlockScalarIndent(unsigned &BlockIndent,
       BlockIndent = Column;
       if (MaxAllSpaceLineCharacters > BlockIndent) {
         setError(
-            "Leading all-spaces line must be smaller than the block indent",
-            LongestAllSpaceLine);
+            "Leading all-spaces line must be smaller than the block indent");
         return false;
       }
       return true;
@@ -1533,7 +1526,6 @@ bool Scanner::findBlockScalarIndent(unsigned &BlockIndent,
       // Record the longest all-space line in case it's longer than the
       // discovered block indent.
       MaxAllSpaceLineCharacters = Column;
-      LongestAllSpaceLine = Current;
     }
 
     // Check for EOF.
@@ -1575,13 +1567,13 @@ bool Scanner::scanBlockScalarIndent(unsigned BlockIndent,
       IsDone = true;
       return true;
     }
-    setError("A text line is less indented than the block scalar", Current);
+    setError("A text line is less indented than the block scalar");
     return false;
   }
   return true; // A normal text line.
 }
 
-bool Scanner::scanBlockScalar(bool IsLiteral) {
+bool Scanner::scanBlockScalar() {
   // Eat '|' or '>'
   assert(*Current == '|' || *Current == '>');
   skip(1);
@@ -1738,10 +1730,10 @@ bool Scanner::fetchMoreTokens() {
     return scanTag();
 
   if (*Current == '|' && !FlowLevel)
-    return scanBlockScalar(true);
+    return scanBlockScalar();
 
   if (*Current == '>' && !FlowLevel)
-    return scanBlockScalar(false);
+    return scanBlockScalar();
 
   if (*Current == '\'')
     return scanFlowScalar(false);
@@ -1832,7 +1824,7 @@ std::string Node::getVerbatimTag() const {
         Token T;
         T.Kind = Token::TK_Tag;
         T.Range = TagHandle;
-        setError(Twine("Unknown tag handle ") + TagHandle, T);
+        setError(Twine("Unknown tag handle ") + TagHandle);
       }
       Ret += Raw.substr(Raw.find_last_of('!') + 1);
       return Ret;
@@ -1871,8 +1863,8 @@ BumpPtrAllocator &Node::getAllocator() {
   return Doc->NodeAllocator;
 }
 
-void Node::setError(const Twine &Msg, Token &Tok) const {
-  Doc->setError(Msg, Tok);
+void Node::setError(const Twine &Msg) const {
+  Doc->setError(Msg);
 }
 
 bool Node::failed() const {
@@ -1949,7 +1941,7 @@ StringRef ScalarNode::unescapeDoubleQuoted( StringRef UnquotedValue
       default: {
           Token T;
           T.Range = StringRef(UnquotedValue.begin(), 1);
-          setError("Unrecognized escape code!", T);
+          setError("Unrecognized escape code!");
           return "";
         }
       case '\r':
@@ -2101,7 +2093,7 @@ Node *KeyValueNode::getValue() {
     }
 
     if (t.Kind != Token::TK_Value) {
-      setError("Unexpected token in Key Value.", t);
+      setError("Unexpected token in Key Value.");
       return Value = new (getAllocator()) NullNode(Doc);
     }
     getNext(); // skip TK_Value.
@@ -2143,7 +2135,7 @@ void MappingNode::increment() {
       CurrentEntry = nullptr;
       break;
     default:
-      setError("Unexpected token. Expected Key or Block End", T);
+      setError("Unexpected token. Expected Key or Block End");
     case Token::TK_Error:
       IsAtEnd = true;
       CurrentEntry = nullptr;
@@ -2162,9 +2154,8 @@ void MappingNode::increment() {
       CurrentEntry = nullptr;
       break;
     default:
-      setError( "Unexpected token. Expected Key, Flow Entry, or Flow "
-                "Mapping End."
-              , T);
+      setError("Unexpected token. Expected Key, Flow Entry, or Flow "
+               "Mapping End.");
       IsAtEnd = true;
       CurrentEntry = nullptr;
     }
@@ -2196,8 +2187,7 @@ void SequenceNode::increment() {
       CurrentEntry = nullptr;
       break;
     default:
-      setError( "Unexpected token. Expected Block Entry or Block End."
-              , T);
+      setError("Unexpected token. Expected Block Entry or Block End.");
     case Token::TK_Error:
       IsAtEnd = true;
       CurrentEntry = nullptr;
@@ -2234,14 +2224,14 @@ void SequenceNode::increment() {
     case Token::TK_StreamEnd:
     case Token::TK_DocumentEnd:
     case Token::TK_DocumentStart:
-      setError("Could not find closing ]!", T);
+      setError("Could not find closing ]!");
       // Set this to end iterator.
       IsAtEnd = true;
       CurrentEntry = nullptr;
       break;
     default:
       if (!WasPreviousTokenFlowEntry) {
-        setError("Expected , between entries!", T);
+        setError("Expected , between entries!");
         IsAtEnd = true;
         CurrentEntry = nullptr;
         break;
@@ -2293,8 +2283,8 @@ Token Document::getNext() {
   return stream.scanner->getNext();
 }
 
-void Document::setError(const Twine &Message, Token &Location) const {
-  stream.scanner->setError(Message, Location.Range.begin());
+void Document::setError(const Twine &Message) const {
+  stream.scanner->setError(Message);
 }
 
 bool Document::failed() const {
@@ -2313,7 +2303,7 @@ parse_property:
     return new (NodeAllocator) AliasNode(stream.CurrentDoc, T.Range.substr(1));
   case Token::TK_Anchor:
     if (AnchorInfo.Kind == Token::TK_Anchor) {
-      setError("Already encountered an anchor for this node!", T);
+      setError("Already encountered an anchor for this node!");
       return nullptr;
     }
     AnchorInfo = getNext(); // Consume TK_Anchor.
@@ -2321,7 +2311,7 @@ parse_property:
     goto parse_property;
   case Token::TK_Tag:
     if (TagInfo.Kind == Token::TK_Tag) {
-      setError("Already encountered a tag for this node!", T);
+      setError("Already encountered a tag for this node!");
       return nullptr;
     }
     TagInfo = getNext(); // Consume TK_Tag.
@@ -2438,7 +2428,7 @@ void Document::parseTAGDirective() {
 bool Document::expectToken(int TK) {
   Token T = getNext();
   if (T.Kind != TK) {
-    setError("Unexpected token", T);
+    setError("Unexpected token");
     return false;
   }
   return true;

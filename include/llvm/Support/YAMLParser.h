@@ -136,7 +136,7 @@ public:
   Token getNext();
   Node *parseBlockNode();
   BumpPtrAllocator &getAllocator();
-  void setError(const Twine &Message, Token &Location) const;
+  void setError(const Twine &Message) const;
   bool failed() const;
 
   virtual void skip() {}
@@ -542,7 +542,7 @@ private:
 
   Token &peekNext();
   Token getNext();
-  void setError(const Twine &Message, Token &Location) const;
+  void setError(const Twine &Message) const;
   bool failed() const;
 
   /// \brief Parse %BLAH directives and return true if any were encountered.

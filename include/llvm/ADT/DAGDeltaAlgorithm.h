@@ -66,7 +66,7 @@ public:
   /// UpdatedSearchState - Callback used when the search state changes.
   virtual void UpdatedSearchState(const changeset_ty &Changes,
                                   const changesetlist_ty &Sets,
-                                  const changeset_ty &Required) {}
+                                  const changeset_ty &Required) {(void)Changes, (void)Sets, (void)Required; }
 
   /// ExecuteOneTest - Execute a single test predicate on the change set \p S.
   virtual bool ExecuteOneTest(const changeset_ty &S) = 0;

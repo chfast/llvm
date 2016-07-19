@@ -1238,6 +1238,7 @@ mcadd( struct parse *p, cset *cs, const char *cp)
 static void
 mcinvert(struct parse *p, cset *cs)
 {
+	(void)p, (void)cs;
 	assert(cs->multis == NULL);	/* xxx */
 }
 
@@ -1251,6 +1252,7 @@ mcinvert(struct parse *p, cset *cs)
 static void
 mccase(struct parse *p, cset *cs)
 {
+	(void)p, (void)cs;
 	assert(cs->multis == NULL);	/* xxx */
 }
 

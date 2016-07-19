@@ -48,6 +48,7 @@ static void *DoSearch(const char* symbolName) {
 #endif
 
 #undef EXPLICIT_SYMBOL
+  (void)symbolName;
   return nullptr;
 }
 

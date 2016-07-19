@@ -100,7 +100,7 @@ std::error_code StringError::convertToErrorCode() const {
   return EC;
 }
 
-void report_fatal_error(Error Err, bool GenCrashDiag) {
+void report_fatal_error(Error Err) {
   assert(Err && "report_fatal_error called with success value");
   std::string ErrMsg;
   {

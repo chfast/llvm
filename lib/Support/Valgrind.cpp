@@ -50,6 +50,7 @@ bool llvm::sys::RunningOnValgrind() {
 }
 
 void llvm::sys::ValgrindDiscardTranslations(const void *Addr, size_t Len) {
+  (void)Addr, (void)Len;
 }
 
 #endif  // !HAVE_VALGRIND_VALGRIND_H

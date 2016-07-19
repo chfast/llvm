@@ -271,6 +271,7 @@ void llvm::sys::SetInterruptFunction(void (*IF)()) {
 // RemoveFileOnSignal - The public API
 bool llvm::sys::RemoveFileOnSignal(StringRef Filename,
                                    std::string* ErrMsg) {
+  (void)ErrMsg;
   {
     sys::SmartScopedLock<true> Guard(*SignalsMutex);
     FilesToRemove->push_back(Filename);
@@ -311,6 +312,7 @@ struct DlIteratePhdrData {
 };
 
 static int dl_iterate_phdr_cb(dl_phdr_info *info, size_t size, void *arg) {
+  (void)size;
   DlIteratePhdrData *data = (DlIteratePhdrData*)arg;
   const char *name = data->first ? data->main_exec_name : info->dlpi_name;
   data->first = false;
@@ -338,7 +340,7 @@ static int dl_iterate_phdr_cb(dl_phdr_info *info, size_t size, void *arg) {
 static bool findModulesAndOffsets(void **StackTrace, int Depth,
                                   const char **Modules, intptr_t *Offsets,
                                   const char *MainExecutableName,
-                                  StringSaver &StrPool) {
+                                  StringSaver &) {
   DlIteratePhdrData data = {StackTrace, Depth,   true,
                             Modules,    Offsets, MainExecutableName};
   dl_iterate_phdr(dl_iterate_phdr_cb, &data);
@@ -493,5 +495,7 @@ void llvm::sys::PrintStackTraceOnErrorSignal(StringRef Argv0,
                              THREAD_STATE_NONE);
     (void)ret;
   }
+#else
+  (void)DisableCrashReporting;
 #endif
 }

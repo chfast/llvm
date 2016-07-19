@@ -418,6 +418,7 @@ const char *Process::OutputColor(char code, bool bold, bool bg) {
 }
 
 const char *Process::OutputBold(bool bg) {
+  (void)bg;
   return "\033[1m";
 }
 

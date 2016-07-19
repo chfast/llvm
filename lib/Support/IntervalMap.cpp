@@ -120,6 +120,7 @@ void Path::moveRight(unsigned Level) {
 IdxPair distribute(unsigned Nodes, unsigned Elements, unsigned Capacity,
                    const unsigned *CurSize, unsigned NewSize[],
                    unsigned Position, bool Grow) {
+  (void)CurSize;
   assert(Elements + Grow <= Nodes * Capacity && "Not enough room for elements");
   assert(Position <= Elements && "Invalid position");
   if (!Nodes)

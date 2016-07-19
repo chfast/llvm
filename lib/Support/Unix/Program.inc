@@ -145,6 +145,7 @@ static bool RedirectIO_PS(const std::string *Path, int FD, std::string *ErrMsg,
 #endif
 
 static void TimeOutHandler(int Sig) {
+  (void)Sig;
 }
 
 static void SetMemoryLimits (unsigned size)
@@ -431,7 +432,7 @@ ProcessInfo sys::Wait(const ProcessInfo &PI, unsigned SecondsToWait,
 
 std::error_code
 llvm::sys::writeFileWithEncoding(StringRef FileName, StringRef Contents,
-                                 WindowsEncodingMethod Encoding /*unused*/) {
+                                 WindowsEncodingMethod) {
   std::error_code EC;
   llvm::raw_fd_ostream OS(FileName, EC, llvm::sys::fs::OpenFlags::F_Text);
 

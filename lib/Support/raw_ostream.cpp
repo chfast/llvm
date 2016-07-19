@@ -560,7 +560,7 @@ raw_fd_ostream::~raw_fd_ostream() {
   // has_error() and clear the error flag with clear_error() before
   // destructing raw_ostream objects which may have errors.
   if (has_error())
-    report_fatal_error("IO failure on output stream.", /*GenCrashDiag=*/false);
+    report_fatal_error("IO failure on output stream.");
 }
 
 
@@ -782,6 +782,7 @@ raw_null_ostream::~raw_null_ostream() {
 }
 
 void raw_null_ostream::write_impl(const char *Ptr, size_t Size) {
+  (void)Ptr, (void)Size;
 }
 
 uint64_t raw_null_ostream::current_pos() const {
@@ -789,4 +790,6 @@ uint64_t raw_null_ostream::current_pos() const {
 }
 
 void raw_null_ostream::pwrite_impl(const char *Ptr, size_t Size,
-                                   uint64_t Offset) {}
+                                   uint64_t Offset) {
+  (void)Ptr, (void)Size, (void)Offset;
+}

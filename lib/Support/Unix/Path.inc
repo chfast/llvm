@@ -167,6 +167,7 @@ std::string getMainExecutable(const char *argv0, void *MainAddr) {
   if (getprogpath(exe_path, argv0) != NULL)
     return exe_path;
 #elif defined(__linux__) || defined(__CYGWIN__)
+  (void)MainAddr;
   char exe_path[MAXPATHLEN];
   StringRef aPath("/proc/self/exe");
   if (sys::fs::exists(aPath)) {
@@ -705,6 +706,7 @@ static bool getDarwinConfDir(bool TempDir, SmallVectorImpl<char> &Result) {
     Result.clear();
   }
   #endif
+  (void)TempDir, (void)Result;
   return false;
 }
 

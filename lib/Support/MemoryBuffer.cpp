@@ -202,7 +202,7 @@ class MemoryBufferMMapFile : public MemoryBuffer {
     return Len + (Offset - getLegalMapOffset(Offset));
   }
 
-  const char *getStart(uint64_t Len, uint64_t Offset) {
+  const char *getStart(uint64_t Offset) {
     return MFR.const_data() + (Offset - getLegalMapOffset(Offset));
   }
 
@@ -212,7 +212,7 @@ public:
       : MFR(FD, sys::fs::mapped_file_region::readonly,
             getLegalMapSize(Len, Offset), getLegalMapOffset(Offset), EC) {
     if (!EC) {
-      const char *Start = getStart(Len, Offset);
+      const char *Start = getStart(Offset);
       init(Start, Start + Len, RequiresNullTerminator);
     }
   }

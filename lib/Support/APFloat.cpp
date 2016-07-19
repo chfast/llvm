@@ -813,7 +813,7 @@ APFloat::APFloat(const fltSemantics &ourSemantics) {
   sign = false;
 }
 
-APFloat::APFloat(const fltSemantics &ourSemantics, uninitializedTag tag) {
+APFloat::APFloat(const fltSemantics &ourSemantics, uninitializedTag) {
   // Allocates storage if necessary but does not initialize it.
   initialize(&ourSemantics);
 }

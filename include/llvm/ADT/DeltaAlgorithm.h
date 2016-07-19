@@ -72,7 +72,9 @@ private:
 protected:
   /// UpdatedSearchState - Callback used when the search state changes.
   virtual void UpdatedSearchState(const changeset_ty &Changes,
-                                  const changesetlist_ty &Sets) {}
+                                  const changesetlist_ty &Sets) {
+    (void)Changes, (void)Sets;
+  }
 
   /// ExecuteOneTest - Execute a single test predicate on the change set \p S.
   virtual bool ExecuteOneTest(const changeset_ty &S) = 0;

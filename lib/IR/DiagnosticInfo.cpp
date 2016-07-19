@@ -46,8 +46,7 @@ struct PassRemarksOpt {
       std::string RegexError;
       if (!Pattern->isValid(RegexError))
         report_fatal_error("Invalid regular expression '" + Val +
-                               "' in -pass-remarks: " + RegexError,
-                           false);
+                               "' in -pass-remarks: " + RegexError);
     }
   }
 };

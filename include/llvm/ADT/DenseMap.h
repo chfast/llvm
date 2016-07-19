@@ -469,6 +469,7 @@ private:
   template <typename LookupKeyT>
   BucketT *InsertIntoBucketImpl(const KeyT &Key, const LookupKeyT &Lookup,
                                 BucketT *TheBucket) {
+    (void)Key;
     incrementEpoch();
 
     // If the load of the hash table is more than 3/4, or if fewer than 1/8 of

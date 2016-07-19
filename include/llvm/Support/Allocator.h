@@ -261,6 +261,7 @@ public:
   using AllocatorBase<BumpPtrAllocatorImpl>::Allocate;
 
   void Deallocate(const void *Ptr, size_t Size) {
+    (void)Ptr, (void)Size;
     __asan_poison_memory_region(Ptr, Size);
   }
 

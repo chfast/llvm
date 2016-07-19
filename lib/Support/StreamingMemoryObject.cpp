@@ -64,6 +64,7 @@ uint64_t RawMemoryObject::readBytes(uint8_t *Buf, uint64_t Size,
 
 const uint8_t *RawMemoryObject::getPointer(uint64_t address,
                                            uint64_t size) const {
+  (void)size;
   return FirstChar + address;
 }
 } // anonymous namespace
