@@ -4,6 +4,8 @@
 target datalayout = "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128"
 target triple = "i386-unknown-linux-gnu"
 
+; This one should not be optimized. We don't want produce mul i128 when
+; the biggest native integer is 32.
 define { i64, i64 } @mul_full_64(i64 %x, i64 %y) {
 ; CHECK-LABEL: @mul_full_64(
 ; CHECK-NEXT:    [[XL:%.*]] = and i64 [[X:%.*]], 4294967295
@@ -62,27 +64,14 @@ define { i64, i64 } @mul_full_64(i64 %x, i64 %y) {
 
 define { i32, i32 } @mul_full_32(i32 %x, i32 %y) {
 ; CHECK-LABEL: @mul_full_32(
-; CHECK-NEXT:    [[XL:%.*]] = and i32 [[X:%.*]], 65535
-; CHECK-NEXT:    [[XH:%.*]] = lshr i32 [[X]], 16
-; CHECK-NEXT:    [[YL:%.*]] = and i32 [[Y:%.*]], 65535
-; CHECK-NEXT:    [[YH:%.*]] = lshr i32 [[Y]], 16
-; CHECK-NEXT:    [[T0:%.*]] = mul nuw i32 [[YL]], [[XL]]
-; CHECK-NEXT:    [[T1:%.*]] = mul nuw i32 [[YL]], [[XH]]
-; CHECK-NEXT:    [[T2:%.*]] = mul nuw i32 [[YH]], [[XL]]
-; CHECK-NEXT:    [[T3:%.*]] = mul nuw i32 [[YH]], [[XH]]
-; CHECK-NEXT:    [[T0L:%.*]] = and i32 [[T0]], 65535
-; CHECK-NEXT:    [[T0H:%.*]] = lshr i32 [[T0]], 16
-; CHECK-NEXT:    [[U0:%.*]] = add i32 [[T0H]], [[T1]]
-; CHECK-NEXT:    [[U0L:%.*]] = and i32 [[U0]], 65535
-; CHECK-NEXT:    [[U0H:%.*]] = lshr i32 [[U0]], 16
-; CHECK-NEXT:    [[U1:%.*]] = add i32 [[U0L]], [[T2]]
-; CHECK-NEXT:    [[U1LS:%.*]] = shl i32 [[U1]], 16
-; CHECK-NEXT:    [[U1H:%.*]] = lshr i32 [[U1]], 16
-; CHECK-NEXT:    [[U2:%.*]] = add i32 [[U0H]], [[T3]]
-; CHECK-NEXT:    [[LO:%.*]] = or i32 [[U1LS]], [[T0L]]
-; CHECK-NEXT:    [[HI:%.*]] = add i32 [[U2]], [[U1H]]
-; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i32, i32 } undef, i32 [[LO]], 0
-; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i32, i32 } [[RES_LO]], i32 [[HI]], 1
+; CHECK-NEXT:    [[FULLMUL_X:%.*]] = zext i32 [[X:%.*]] to i64
+; CHECK-NEXT:    [[FULLMUL_Y:%.*]] = zext i32 [[Y:%.*]] to i64
+; CHECK-NEXT:    [[FULLMUL:%.*]] = mul nuw i64 [[FULLMUL_X]], [[FULLMUL_Y]]
+; CHECK-NEXT:    [[FULLMUL_LO:%.*]] = trunc i64 [[FULLMUL]] to i32
+; CHECK-NEXT:    [[TMP1:%.*]] = lshr i64 [[FULLMUL]], 16
+; CHECK-NEXT:    [[FULLMUL_HI:%.*]] = trunc i64 [[TMP1]] to i32
+; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i32, i32 } undef, i32 [[FULLMUL_LO]], 0
+; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i32, i32 } [[RES_LO]], i32 [[FULLMUL_HI]], 1
 ; CHECK-NEXT:    ret { i32, i32 } [[RES]]
 ;
   %xl = and i32 %x, 65535

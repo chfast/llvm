@@ -251,10 +251,227 @@ static bool foldAnyOrAllBitsSet(Instruction &I) {
   return true;
 }
 
+/// Finds the first instruction after both A and B.
+/// A and B are assumed to be either Instruction or Argument.
+static Instruction *getInstructionAfter(Value *A, Value *B, DominatorTree &DT) {
+  // TODO: Is there better way to achieve that?
+  Instruction *I = nullptr;
+
+  if (auto AI = dyn_cast<Instruction>(A))
+    I = AI->getNextNode();
+  else // If Argument use the first instruction in the entry block.
+    I = &cast<Argument>(A)->getParent()->front().front();
+
+  auto BI = dyn_cast<Instruction>(B);
+  if (BI && DT.dominates(I, BI))
+    I = BI->getNextNode(); // After B.
+
+  return I;
+}
+
+/// Tries to find the full multiplication instructions pattern:
+/// mul(zext(X), zext(Y)).
+static Value *findFullMul(Value *X, Value *Y) {
+  auto *FullTy = IntegerType::get(X->getContext(),
+                                  X->getType()->getPrimitiveSizeInBits() * 2);
+  for (const auto U : X->users()) {
+    if (U->getType() == FullTy && match(U, m_ZExt(m_Specific(X)))) {
+      for (const auto V : U->users()) {
+        if (match(V, m_c_Mul(m_Specific(U), m_ZExt(m_Specific(Y)))))
+          return V;
+      }
+    }
+  }
+  return nullptr;
+}
+
+/// Tries to find instruction mul(X, Y).
+static Value *findLowMul(Value *X, Value *Y) {
+  for (const auto U : X->users()) {
+    if (match(U, m_c_Mul(m_Specific(X), m_Specific(Y))))
+      return U;
+  }
+  return nullptr;
+}
+
+/// Tries to find a mul with X, Y as arguments. Creates a new one if not found.
+static Value *findOrCreateLowMul(Instruction &I, Value *X, Value *Y,
+                                 DominatorTree &DT) {
+  if (auto *Mul = findLowMul(X, Y))
+    return Mul;
+
+  if (auto *FullMul = findFullMul(X, Y)) {
+    IRBuilder<> Builder{&I};
+    return Builder.CreateTrunc(FullMul, X->getType(), "fullmul.lo");
+  }
+
+  // Create the full multiplication instruction and place it just after its
+  // operands. This position is the higher possible so will be safe to be used
+  // as a replacement for all future matched patterns.
+  IRBuilder<> Builder{getInstructionAfter(X, Y, DT)};
+  return Builder.CreateMul(X, Y, "mul");
+}
+
+/// Tries to find the full mul with X, Y as arguments. If not found it creates
+/// a new one. It also replaces low mul if found.
+static Value *findOrCreateFullMul(Value *X, Value *Y, DominatorTree &DT) {
+
+  if (auto *Mul = findFullMul(X, Y))
+    return Mul;
+
+  auto *MulTy = IntegerType::get(X->getContext(),
+                                 X->getType()->getPrimitiveSizeInBits() * 2);
+  IRBuilder<> Builder{getInstructionAfter(X, Y, DT)};
+  auto *FullMul = Builder.CreateNUWMul(
+      Builder.CreateZExt(X, MulTy, {"fullmul.", X->getName()}),
+      Builder.CreateZExt(Y, MulTy, {"fullmul.", Y->getName()}), "fullmul");
+
+  // If you find a low mul, replace it also with the full mul.
+  if (auto *LowMul = findLowMul(X, Y)) {
+    auto *FullMulLo =
+        Builder.CreateTrunc(FullMul, LowMul->getType(), "fullmul.lo");
+    LowMul->replaceAllUsesWith(FullMulLo);
+  }
+
+  return FullMul;
+}
+
+/// Matches the following pattern producing full multiplication:
+///
+/// %xl = and i64 %x, 4294967295
+/// %xh = lshr i64 %x, 32
+/// %yl = and i64 %y, 4294967295
+/// %yh = lshr i64 %y, 32
+///
+/// %t0 = mul nuw i64 %yl, %xl
+/// %t1 = mul nuw i64 %yl, %xh
+/// %t2 = mul nuw i64 %yh, %xl
+/// %t3 = mul nuw i64 %yh, %xh
+///
+/// %t0l = and i64 %t0, 4294967295
+/// %t0h = lshr i64 %t0, 32
+///
+/// %u0 = add i64 %t0h, %t1
+/// %u0l = and i64 %u0, 4294967295
+/// %u0h = lshr i64 %u0, 32
+///
+/// %u1 = add i64 %u0l, %t2
+/// %u1ls = shl i64 %u1, 32
+/// %u1h = lshr i64 %u1, 32
+///
+/// %u2 = add i64 %u0h, %t3
+///
+/// %lo = or i64 %u1ls, %t0l
+/// %hi = add i64 %u2, %u1h
+///
+static bool foldFullMul(Instruction &I, const DataLayout &DL,
+                        DominatorTree &DT) {
+
+  // We limit this up to 128 bits to have the low part mask be at most 64-bit
+  // (m_SpecificInt() matcher limitation).
+  static constexpr unsigned maxSizeInBits = 128;
+
+  auto *ty = I.getType();
+  if (!ty->isIntegerTy())
+    return false;
+
+  // Check the integer type size.
+  // Also make sure the size in bits is even to make low-high split trivial.
+  const auto sizeInBits = ty->getPrimitiveSizeInBits();
+  if (sizeInBits > maxSizeInBits || sizeInBits % 2 != 0)
+    return false;
+
+  // Skip integers bigger than native.
+  if (sizeInBits > DL.getLargestLegalIntTypeSizeInBits())
+    return false;
+
+  const auto halfSizeInBits = sizeInBits / 2; // Max 64.
+  const auto Half = m_SpecificInt(halfSizeInBits);
+  const auto lowMask =
+      m_SpecificInt(~uint64_t{0} >> ((maxSizeInBits / 2) - halfSizeInBits));
+
+  Value *x = nullptr;
+  Value *y = nullptr;
+  Value *t0 = nullptr;
+  Value *t1 = nullptr;
+  Value *t2 = nullptr;
+  Value *t3 = nullptr;
+  Value *u0 = nullptr;
+
+  // Match low part of the full multiplication.
+  //
+  // First we match up to the multiplications t0, t1, t2.
+  // The t0 is reachable by two edges and we _assume_ it's the same node
+  // in general it does not have to be.
+  //
+  // The long pattern is: ((t2 + lo(t1 + hi(t0))) << 32) | lo(t0).
+  bool LowLongPattern =
+      match(&I, m_c_Or(m_And(m_Value(t0), lowMask),
+                       m_Shl(m_c_Add(m_And(m_c_Add(m_LShr(m_Deferred(t0), Half),
+                                                   m_Value(t1)),
+                                           lowMask),
+                                     m_Value(t2)),
+                             Half)));
+
+  // The short pattern is: ((t2 + t1) << Half) + t0.
+  bool LowShortPattern = match(
+      &I, m_c_Add(m_Value(t0), m_Shl(m_c_Add(m_Value(t1), m_Value(t2)), Half)));
+
+  if (LowLongPattern || LowShortPattern) {
+    // 1. Match t1 and remember its arguments. We start with t1 is asymmetric.
+    // 2. Require t2 to be a swapped version of t1.
+    // 3. For t0 require to have the same arguments as t1.
+    if (match(t1,
+              m_c_Mul(m_LShr(m_Value(x), Half), m_And(m_Value(y), lowMask))) &&
+        match(t2, m_c_Mul(m_And(m_Specific(x), lowMask),
+                          m_LShr(m_Specific(y), Half))) &&
+        match(t0, m_c_Mul(m_And(m_Specific(x), lowMask),
+                          m_And(m_Specific(y), lowMask)))) {
+      // Replace with single multiplication.
+      auto Mul = findOrCreateLowMul(I, x, y, DT);
+      IRBuilder<> Builder{&I};
+      auto Low = Builder.CreateTrunc(Mul, ty, "fullmul.lo");
+      I.replaceAllUsesWith(Low);
+      return true;
+    }
+  }
+
+  // Match hi part of the full multiplication.
+  //
+  // First we match up to multiplications t2 and t3 and u0 node.
+  // Then check the u0 node.
+  // In the end check all 4 multiplications starting from asymmetric ones
+  // the same as in matching the low part.
+  if (match(&I,
+            m_c_Add(
+                m_LShr(m_c_Add(m_And(m_Value(u0), lowMask), m_Value(t2)), Half),
+                m_c_Add(m_LShr(m_Deferred(u0), Half), m_Value(t3)))) &&
+      match(u0, m_c_Add(m_LShr(m_Value(t0), Half), m_Value(t1)))) {
+    if (match(t1,
+              m_c_Mul(m_LShr(m_Value(x), Half), m_And(m_Value(y), lowMask))) &&
+        match(t2, m_c_Mul(m_And(m_Specific(x), lowMask),
+                          m_LShr(m_Specific(y), Half))) &&
+        match(t0, m_c_Mul(m_And(m_Specific(x), lowMask),
+                          m_And(m_Specific(y), lowMask))) &&
+        match(t3, m_c_Mul(m_LShr(m_Specific(x), Half),
+                          m_LShr(m_Specific(y), Half)))) {
+      auto mul = findOrCreateFullMul(x, y, DT);
+      IRBuilder<> Builder{&I};
+      auto hi = Builder.CreateTrunc(Builder.CreateLShr(mul, halfSizeInBits), ty,
+                                    "fullmul.hi");
+      I.replaceAllUsesWith(hi);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /// This is the entry point for folds that could be implemented in regular
 /// InstCombine, but they are separated because they are not expected to
 /// occur frequently and/or have more than a constant-length pattern match.
-static bool foldUnusualPatterns(Function &F, DominatorTree &DT) {
+static bool foldUnusualPatterns(Function &F, const DataLayout &DL,
+                                DominatorTree &DT) {
   bool MadeChange = false;
   for (BasicBlock &BB : F) {
     // Ignore unreachable basic blocks.
@@ -269,6 +486,7 @@ static bool foldUnusualPatterns(Function &F, DominatorTree &DT) {
     for (Instruction &I : make_range(BB.rbegin(), BB.rend())) {
       MadeChange |= foldAnyOrAllBitsSet(I);
       MadeChange |= foldGuardedRotateToFunnelShift(I);
+      MadeChange |= foldFullMul(I, DL, DT);
     }
   }
 
@@ -287,7 +505,7 @@ static bool runImpl(Function &F, TargetLibraryInfo &TLI, DominatorTree &DT) {
   const DataLayout &DL = F.getParent()->getDataLayout();
   TruncInstCombine TIC(TLI, DL, DT);
   MadeChange |= TIC.run(F);
-  MadeChange |= foldUnusualPatterns(F, DT);
+  MadeChange |= foldUnusualPatterns(F, DL, DT);
   return MadeChange;
 }
 

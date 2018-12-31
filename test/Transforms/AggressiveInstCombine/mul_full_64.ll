@@ -6,27 +6,14 @@ target triple = "x86_64-unknown-linux-gnu"
 
 define { i64, i64 } @mul_full_64_variant0(i64 %x, i64 %y) {
 ; CHECK-LABEL: @mul_full_64_variant0(
-; CHECK-NEXT:    [[XL:%.*]] = and i64 [[X:%.*]], 4294967295
-; CHECK-NEXT:    [[XH:%.*]] = lshr i64 [[X]], 32
-; CHECK-NEXT:    [[YL:%.*]] = and i64 [[Y:%.*]], 4294967295
-; CHECK-NEXT:    [[YH:%.*]] = lshr i64 [[Y]], 32
-; CHECK-NEXT:    [[T0:%.*]] = mul nuw i64 [[YL]], [[XL]]
-; CHECK-NEXT:    [[T1:%.*]] = mul nuw i64 [[YL]], [[XH]]
-; CHECK-NEXT:    [[T2:%.*]] = mul nuw i64 [[YH]], [[XL]]
-; CHECK-NEXT:    [[T3:%.*]] = mul nuw i64 [[YH]], [[XH]]
-; CHECK-NEXT:    [[T0L:%.*]] = and i64 [[T0]], 4294967295
-; CHECK-NEXT:    [[T0H:%.*]] = lshr i64 [[T0]], 32
-; CHECK-NEXT:    [[U0:%.*]] = add i64 [[T0H]], [[T1]]
-; CHECK-NEXT:    [[U0L:%.*]] = and i64 [[U0]], 4294967295
-; CHECK-NEXT:    [[U0H:%.*]] = lshr i64 [[U0]], 32
-; CHECK-NEXT:    [[U1:%.*]] = add i64 [[U0L]], [[T2]]
-; CHECK-NEXT:    [[U1LS:%.*]] = shl i64 [[U1]], 32
-; CHECK-NEXT:    [[U1H:%.*]] = lshr i64 [[U1]], 32
-; CHECK-NEXT:    [[U2:%.*]] = add i64 [[U0H]], [[T3]]
-; CHECK-NEXT:    [[LO:%.*]] = or i64 [[U1LS]], [[T0L]]
-; CHECK-NEXT:    [[HI:%.*]] = add i64 [[U2]], [[U1H]]
-; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i64, i64 } undef, i64 [[LO]], 0
-; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i64, i64 } [[RES_LO]], i64 [[HI]], 1
+; CHECK-NEXT:    [[FULLMUL_X:%.*]] = zext i64 [[X:%.*]] to i128
+; CHECK-NEXT:    [[FULLMUL_Y:%.*]] = zext i64 [[Y:%.*]] to i128
+; CHECK-NEXT:    [[FULLMUL:%.*]] = mul nuw i128 [[FULLMUL_X]], [[FULLMUL_Y]]
+; CHECK-NEXT:    [[FULLMUL_LO:%.*]] = trunc i128 [[FULLMUL]] to i64
+; CHECK-NEXT:    [[TMP1:%.*]] = lshr i128 [[FULLMUL]], 32
+; CHECK-NEXT:    [[FULLMUL_HI:%.*]] = trunc i128 [[TMP1]] to i64
+; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i64, i64 } undef, i64 [[FULLMUL_LO]], 0
+; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i64, i64 } [[RES_LO]], i64 [[FULLMUL_HI]], 1
 ; CHECK-NEXT:    ret { i64, i64 } [[RES]]
 ;
   %xl = and i64 %x, 4294967295
@@ -89,25 +76,14 @@ define { i64, i64 } @mul_full_64_variant0(i64 %x, i64 %y) {
 
 define i64 @mul_full_64_variant1(i64 %a, i64 %b, i64* nocapture %rhi) {
 ; CHECK-LABEL: @mul_full_64_variant1(
-; CHECK-NEXT:    [[CONV:%.*]] = and i64 [[A:%.*]], 4294967295
-; CHECK-NEXT:    [[SHR_I43:%.*]] = lshr i64 [[A]], 32
-; CHECK-NEXT:    [[CONV3:%.*]] = and i64 [[B:%.*]], 4294967295
-; CHECK-NEXT:    [[SHR_I41:%.*]] = lshr i64 [[B]], 32
-; CHECK-NEXT:    [[MUL:%.*]] = mul nuw i64 [[SHR_I41]], [[SHR_I43]]
-; CHECK-NEXT:    [[MUL5:%.*]] = mul nuw i64 [[CONV3]], [[SHR_I43]]
-; CHECK-NEXT:    [[MUL6:%.*]] = mul nuw i64 [[SHR_I41]], [[CONV]]
-; CHECK-NEXT:    [[MUL7:%.*]] = mul nuw i64 [[CONV3]], [[CONV]]
-; CHECK-NEXT:    [[SHR_I40:%.*]] = lshr i64 [[MUL7]], 32
-; CHECK-NEXT:    [[ADD:%.*]] = add i64 [[SHR_I40]], [[MUL5]]
-; CHECK-NEXT:    [[SHR_I39:%.*]] = lshr i64 [[ADD]], 32
-; CHECK-NEXT:    [[ADD10:%.*]] = add i64 [[SHR_I39]], [[MUL]]
-; CHECK-NEXT:    [[CONV14:%.*]] = and i64 [[ADD]], 4294967295
-; CHECK-NEXT:    [[ADD15:%.*]] = add i64 [[CONV14]], [[MUL6]]
-; CHECK-NEXT:    [[SHR_I:%.*]] = lshr i64 [[ADD15]], 32
-; CHECK-NEXT:    [[ADD17:%.*]] = add i64 [[ADD10]], [[SHR_I]]
-; CHECK-NEXT:    store i64 [[ADD17]], i64* [[RHI:%.*]], align 8
-; CHECK-NEXT:    [[MULLO:%.*]] = mul i64 [[B]], [[A]]
-; CHECK-NEXT:    ret i64 [[MULLO]]
+; CHECK-NEXT:    [[FULLMUL_A:%.*]] = zext i64 [[A:%.*]] to i128
+; CHECK-NEXT:    [[FULLMUL_B:%.*]] = zext i64 [[B:%.*]] to i128
+; CHECK-NEXT:    [[FULLMUL:%.*]] = mul nuw i128 [[FULLMUL_A]], [[FULLMUL_B]]
+; CHECK-NEXT:    [[FULLMUL_LO:%.*]] = trunc i128 [[FULLMUL]] to i64
+; CHECK-NEXT:    [[TMP1:%.*]] = lshr i128 [[FULLMUL]], 32
+; CHECK-NEXT:    [[FULLMUL_HI:%.*]] = trunc i128 [[TMP1]] to i64
+; CHECK-NEXT:    store i64 [[FULLMUL_HI]], i64* [[RHI:%.*]], align 8
+; CHECK-NEXT:    ret i64 [[FULLMUL_LO]]
 ;
   %conv = and i64 %a, 4294967295
   %shr.i43 = lshr i64 %a, 32
@@ -132,27 +108,14 @@ define i64 @mul_full_64_variant1(i64 %a, i64 %b, i64* nocapture %rhi) {
 
 define i64 @mul_full_64_variant2(i64 %a, i64 %b, i64* nocapture %rhi) {
 ; CHECK-LABEL: @mul_full_64_variant2(
-; CHECK-NEXT:    [[CONV:%.*]] = and i64 [[A:%.*]], 4294967295
-; CHECK-NEXT:    [[SHR_I58:%.*]] = lshr i64 [[A]], 32
-; CHECK-NEXT:    [[CONV3:%.*]] = and i64 [[B:%.*]], 4294967295
-; CHECK-NEXT:    [[SHR_I56:%.*]] = lshr i64 [[B]], 32
-; CHECK-NEXT:    [[MUL:%.*]] = mul nuw i64 [[SHR_I56]], [[SHR_I58]]
-; CHECK-NEXT:    [[MUL5:%.*]] = mul nuw i64 [[CONV3]], [[SHR_I58]]
-; CHECK-NEXT:    [[MUL6:%.*]] = mul nuw i64 [[SHR_I56]], [[CONV]]
-; CHECK-NEXT:    [[MUL7:%.*]] = mul nuw i64 [[CONV3]], [[CONV]]
-; CHECK-NEXT:    [[SHR_I55:%.*]] = lshr i64 [[MUL7]], 32
-; CHECK-NEXT:    [[ADD:%.*]] = add i64 [[SHR_I55]], [[MUL5]]
-; CHECK-NEXT:    [[SHR_I54:%.*]] = lshr i64 [[ADD]], 32
-; CHECK-NEXT:    [[ADD10:%.*]] = add i64 [[SHR_I54]], [[MUL]]
-; CHECK-NEXT:    [[CONV14:%.*]] = and i64 [[ADD]], 4294967295
-; CHECK-NEXT:    [[ADD15:%.*]] = add i64 [[CONV14]], [[MUL6]]
-; CHECK-NEXT:    [[SHR_I51:%.*]] = lshr i64 [[ADD15]], 32
-; CHECK-NEXT:    [[ADD17:%.*]] = add i64 [[ADD10]], [[SHR_I51]]
-; CHECK-NEXT:    store i64 [[ADD17]], i64* [[RHI:%.*]], align 8
-; CHECK-NEXT:    [[CONV24:%.*]] = shl i64 [[ADD15]], 32
-; CHECK-NEXT:    [[CONV26:%.*]] = and i64 [[MUL7]], 4294967295
-; CHECK-NEXT:    [[ADD27:%.*]] = or i64 [[CONV24]], [[CONV26]]
-; CHECK-NEXT:    ret i64 [[ADD27]]
+; CHECK-NEXT:    [[FULLMUL_A:%.*]] = zext i64 [[A:%.*]] to i128
+; CHECK-NEXT:    [[FULLMUL_B:%.*]] = zext i64 [[B:%.*]] to i128
+; CHECK-NEXT:    [[FULLMUL:%.*]] = mul nuw i128 [[FULLMUL_A]], [[FULLMUL_B]]
+; CHECK-NEXT:    [[FULLMUL_LO:%.*]] = trunc i128 [[FULLMUL]] to i64
+; CHECK-NEXT:    [[TMP1:%.*]] = lshr i128 [[FULLMUL]], 32
+; CHECK-NEXT:    [[FULLMUL_HI:%.*]] = trunc i128 [[TMP1]] to i64
+; CHECK-NEXT:    store i64 [[FULLMUL_HI]], i64* [[RHI:%.*]], align 8
+; CHECK-NEXT:    ret i64 [[FULLMUL_LO]]
 ;
   %conv = and i64 %a, 4294967295
   %shr.i58 = lshr i64 %a, 32
@@ -179,27 +142,14 @@ define i64 @mul_full_64_variant2(i64 %a, i64 %b, i64* nocapture %rhi) {
 
 define i64 @mul_full_64_variant3(i64 %a, i64 %b, i64* nocapture %rhi) {
 ; CHECK-LABEL: @mul_full_64_variant3(
-; CHECK-NEXT:    [[CONV:%.*]] = and i64 [[A:%.*]], 4294967295
-; CHECK-NEXT:    [[SHR_I45:%.*]] = lshr i64 [[A]], 32
-; CHECK-NEXT:    [[CONV3:%.*]] = and i64 [[B:%.*]], 4294967295
-; CHECK-NEXT:    [[SHR_I43:%.*]] = lshr i64 [[B]], 32
-; CHECK-NEXT:    [[MUL:%.*]] = mul nuw i64 [[SHR_I43]], [[SHR_I45]]
-; CHECK-NEXT:    [[MUL5:%.*]] = mul nuw i64 [[CONV3]], [[SHR_I45]]
-; CHECK-NEXT:    [[MUL6:%.*]] = mul nuw i64 [[SHR_I43]], [[CONV]]
-; CHECK-NEXT:    [[MUL7:%.*]] = mul nuw i64 [[CONV3]], [[CONV]]
-; CHECK-NEXT:    [[SHR_I42:%.*]] = lshr i64 [[MUL7]], 32
-; CHECK-NEXT:    [[ADD:%.*]] = add i64 [[SHR_I42]], [[MUL5]]
-; CHECK-NEXT:    [[SHR_I41:%.*]] = lshr i64 [[ADD]], 32
-; CHECK-NEXT:    [[ADD10:%.*]] = add i64 [[SHR_I41]], [[MUL]]
-; CHECK-NEXT:    [[CONV14:%.*]] = and i64 [[ADD]], 4294967295
-; CHECK-NEXT:    [[ADD15:%.*]] = add i64 [[CONV14]], [[MUL6]]
-; CHECK-NEXT:    [[SHR_I:%.*]] = lshr i64 [[ADD15]], 32
-; CHECK-NEXT:    [[ADD17:%.*]] = add i64 [[ADD10]], [[SHR_I]]
-; CHECK-NEXT:    store i64 [[ADD17]], i64* [[RHI:%.*]], align 8
-; CHECK-NEXT:    [[ADD18:%.*]] = add i64 [[MUL6]], [[MUL5]]
-; CHECK-NEXT:    [[SHL:%.*]] = shl i64 [[ADD18]], 32
-; CHECK-NEXT:    [[ADD19:%.*]] = add i64 [[SHL]], [[MUL7]]
-; CHECK-NEXT:    ret i64 [[ADD19]]
+; CHECK-NEXT:    [[FULLMUL_A:%.*]] = zext i64 [[A:%.*]] to i128
+; CHECK-NEXT:    [[FULLMUL_B:%.*]] = zext i64 [[B:%.*]] to i128
+; CHECK-NEXT:    [[FULLMUL:%.*]] = mul nuw i128 [[FULLMUL_A]], [[FULLMUL_B]]
+; CHECK-NEXT:    [[FULLMUL_LO:%.*]] = trunc i128 [[FULLMUL]] to i64
+; CHECK-NEXT:    [[TMP1:%.*]] = lshr i128 [[FULLMUL]], 32
+; CHECK-NEXT:    [[FULLMUL_HI:%.*]] = trunc i128 [[TMP1]] to i64
+; CHECK-NEXT:    store i64 [[FULLMUL_HI]], i64* [[RHI:%.*]], align 8
+; CHECK-NEXT:    ret i64 [[FULLMUL_LO]]
 ;
   %conv = and i64 %a, 4294967295
   %shr.i45 = lshr i64 %a, 32
@@ -227,27 +177,14 @@ define i64 @mul_full_64_variant3(i64 %a, i64 %b, i64* nocapture %rhi) {
 
 define { i32, i32 } @mul_full_32(i32 %x, i32 %y) {
 ; CHECK-LABEL: @mul_full_32(
-; CHECK-NEXT:    [[XL:%.*]] = and i32 [[X:%.*]], 65535
-; CHECK-NEXT:    [[XH:%.*]] = lshr i32 [[X]], 16
-; CHECK-NEXT:    [[YL:%.*]] = and i32 [[Y:%.*]], 65535
-; CHECK-NEXT:    [[YH:%.*]] = lshr i32 [[Y]], 16
-; CHECK-NEXT:    [[T0:%.*]] = mul nuw i32 [[YL]], [[XL]]
-; CHECK-NEXT:    [[T1:%.*]] = mul nuw i32 [[YL]], [[XH]]
-; CHECK-NEXT:    [[T2:%.*]] = mul nuw i32 [[YH]], [[XL]]
-; CHECK-NEXT:    [[T3:%.*]] = mul nuw i32 [[YH]], [[XH]]
-; CHECK-NEXT:    [[T0L:%.*]] = and i32 [[T0]], 65535
-; CHECK-NEXT:    [[T0H:%.*]] = lshr i32 [[T0]], 16
-; CHECK-NEXT:    [[U0:%.*]] = add i32 [[T0H]], [[T1]]
-; CHECK-NEXT:    [[U0L:%.*]] = and i32 [[U0]], 65535
-; CHECK-NEXT:    [[U0H:%.*]] = lshr i32 [[U0]], 16
-; CHECK-NEXT:    [[U1:%.*]] = add i32 [[U0L]], [[T2]]
-; CHECK-NEXT:    [[U1LS:%.*]] = shl i32 [[U1]], 16
-; CHECK-NEXT:    [[U1H:%.*]] = lshr i32 [[U1]], 16
-; CHECK-NEXT:    [[U2:%.*]] = add i32 [[U0H]], [[T3]]
-; CHECK-NEXT:    [[LO:%.*]] = or i32 [[U1LS]], [[T0L]]
-; CHECK-NEXT:    [[HI:%.*]] = add i32 [[U2]], [[U1H]]
-; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i32, i32 } undef, i32 [[LO]], 0
-; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i32, i32 } [[RES_LO]], i32 [[HI]], 1
+; CHECK-NEXT:    [[FULLMUL_X:%.*]] = zext i32 [[X:%.*]] to i64
+; CHECK-NEXT:    [[FULLMUL_Y:%.*]] = zext i32 [[Y:%.*]] to i64
+; CHECK-NEXT:    [[FULLMUL:%.*]] = mul nuw i64 [[FULLMUL_X]], [[FULLMUL_Y]]
+; CHECK-NEXT:    [[FULLMUL_LO:%.*]] = trunc i64 [[FULLMUL]] to i32
+; CHECK-NEXT:    [[TMP1:%.*]] = lshr i64 [[FULLMUL]], 16
+; CHECK-NEXT:    [[FULLMUL_HI:%.*]] = trunc i64 [[TMP1]] to i32
+; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i32, i32 } undef, i32 [[FULLMUL_LO]], 0
+; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i32, i32 } [[RES_LO]], i32 [[FULLMUL_HI]], 1
 ; CHECK-NEXT:    ret { i32, i32 } [[RES]]
 ;
   %xl = and i32 %x, 65535
@@ -291,28 +228,15 @@ declare i64 @get_number()
 define { i64, i64 } @mul_full_64_variant0_1() {
 ; CHECK-LABEL: @mul_full_64_variant0_1(
 ; CHECK-NEXT:    [[TMP1:%.*]] = call i64 @get_number()
-; CHECK-NEXT:    [[YL:%.*]] = and i64 [[TMP1]], 4294967295
-; CHECK-NEXT:    [[YH:%.*]] = lshr i64 [[TMP1]], 32
 ; CHECK-NEXT:    [[TMP2:%.*]] = call i64 @get_number()
-; CHECK-NEXT:    [[XH:%.*]] = lshr i64 [[TMP2]], 32
-; CHECK-NEXT:    [[XL:%.*]] = and i64 [[TMP2]], 4294967295
-; CHECK-NEXT:    [[T1:%.*]] = mul nuw i64 [[YL]], [[XH]]
-; CHECK-NEXT:    [[T3:%.*]] = mul nuw i64 [[YH]], [[XH]]
-; CHECK-NEXT:    [[T2:%.*]] = mul nuw i64 [[YH]], [[XL]]
-; CHECK-NEXT:    [[T0:%.*]] = mul nuw i64 [[YL]], [[XL]]
-; CHECK-NEXT:    [[T0H:%.*]] = lshr i64 [[T0]], 32
-; CHECK-NEXT:    [[U0:%.*]] = add i64 [[T0H]], [[T1]]
-; CHECK-NEXT:    [[U0L:%.*]] = and i64 [[U0]], 4294967295
-; CHECK-NEXT:    [[U1:%.*]] = add i64 [[U0L]], [[T2]]
-; CHECK-NEXT:    [[U0H:%.*]] = lshr i64 [[U0]], 32
-; CHECK-NEXT:    [[U2:%.*]] = add i64 [[U0H]], [[T3]]
-; CHECK-NEXT:    [[U1H:%.*]] = lshr i64 [[U1]], 32
-; CHECK-NEXT:    [[HI:%.*]] = add i64 [[U2]], [[U1H]]
-; CHECK-NEXT:    [[U1LS:%.*]] = shl i64 [[U1]], 32
-; CHECK-NEXT:    [[T0L:%.*]] = and i64 [[T0]], 4294967295
-; CHECK-NEXT:    [[LO:%.*]] = or i64 [[U1LS]], [[T0L]]
-; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i64, i64 } undef, i64 [[LO]], 0
-; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i64, i64 } [[RES_LO]], i64 [[HI]], 1
+; CHECK-NEXT:    [[FULLMUL_:%.*]] = zext i64 [[TMP2]] to i128
+; CHECK-NEXT:    [[FULLMUL_1:%.*]] = zext i64 [[TMP1]] to i128
+; CHECK-NEXT:    [[FULLMUL:%.*]] = mul nuw i128 [[FULLMUL_]], [[FULLMUL_1]]
+; CHECK-NEXT:    [[FULLMUL_LO:%.*]] = trunc i128 [[FULLMUL]] to i64
+; CHECK-NEXT:    [[TMP3:%.*]] = lshr i128 [[FULLMUL]], 32
+; CHECK-NEXT:    [[FULLMUL_HI:%.*]] = trunc i128 [[TMP3]] to i64
+; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i64, i64 } undef, i64 [[FULLMUL_LO]], 0
+; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i64, i64 } [[RES_LO]], i64 [[FULLMUL_HI]], 1
 ; CHECK-NEXT:    ret { i64, i64 } [[RES]]
 ;
   %1 = call i64 @get_number()
@@ -350,27 +274,14 @@ define { i64, i64 } @mul_full_64_variant0_2() {
 ; CHECK-LABEL: @mul_full_64_variant0_2(
 ; CHECK-NEXT:    [[X:%.*]] = call i64 @get_number()
 ; CHECK-NEXT:    [[Y:%.*]] = call i64 @get_number()
-; CHECK-NEXT:    [[YL:%.*]] = and i64 [[Y]], 4294967295
-; CHECK-NEXT:    [[YH:%.*]] = lshr i64 [[Y]], 32
-; CHECK-NEXT:    [[XH:%.*]] = lshr i64 [[X]], 32
-; CHECK-NEXT:    [[XL:%.*]] = and i64 [[X]], 4294967295
-; CHECK-NEXT:    [[T3:%.*]] = mul nuw i64 [[XH]], [[YH]]
-; CHECK-NEXT:    [[T2:%.*]] = mul nuw i64 [[XL]], [[YH]]
-; CHECK-NEXT:    [[T1:%.*]] = mul nuw i64 [[XH]], [[YL]]
-; CHECK-NEXT:    [[T0:%.*]] = mul nuw i64 [[XL]], [[YL]]
-; CHECK-NEXT:    [[T0H:%.*]] = lshr i64 [[T0]], 32
-; CHECK-NEXT:    [[U0:%.*]] = add i64 [[T1]], [[T0H]]
-; CHECK-NEXT:    [[U0L:%.*]] = and i64 [[U0]], 4294967295
-; CHECK-NEXT:    [[U1:%.*]] = add i64 [[T2]], [[U0L]]
-; CHECK-NEXT:    [[U0H:%.*]] = lshr i64 [[U0]], 32
-; CHECK-NEXT:    [[U2:%.*]] = add i64 [[U0H]], [[T3]]
-; CHECK-NEXT:    [[U1H:%.*]] = lshr i64 [[U1]], 32
-; CHECK-NEXT:    [[HI:%.*]] = add i64 [[U1H]], [[U2]]
-; CHECK-NEXT:    [[U1LS:%.*]] = shl i64 [[U1]], 32
-; CHECK-NEXT:    [[T0L:%.*]] = and i64 [[T0]], 4294967295
-; CHECK-NEXT:    [[LO:%.*]] = or i64 [[T0L]], [[U1LS]]
-; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i64, i64 } undef, i64 [[LO]], 0
-; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i64, i64 } [[RES_LO]], i64 [[HI]], 1
+; CHECK-NEXT:    [[FULLMUL_X:%.*]] = zext i64 [[X]] to i128
+; CHECK-NEXT:    [[FULLMUL_Y:%.*]] = zext i64 [[Y]] to i128
+; CHECK-NEXT:    [[FULLMUL:%.*]] = mul nuw i128 [[FULLMUL_X]], [[FULLMUL_Y]]
+; CHECK-NEXT:    [[FULLMUL_LO:%.*]] = trunc i128 [[FULLMUL]] to i64
+; CHECK-NEXT:    [[TMP1:%.*]] = lshr i128 [[FULLMUL]], 32
+; CHECK-NEXT:    [[FULLMUL_HI:%.*]] = trunc i128 [[TMP1]] to i64
+; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i64, i64 } undef, i64 [[FULLMUL_LO]], 0
+; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i64, i64 } [[RES_LO]], i64 [[FULLMUL_HI]], 1
 ; CHECK-NEXT:    ret { i64, i64 } [[RES]]
 ;
   %x = call i64 @get_number()
@@ -407,23 +318,12 @@ define { i64, i64 } @mul_full_64_variant0_2() {
 
 define i64 @umulh_64(i64 %x, i64 %y) {
 ; CHECK-LABEL: @umulh_64(
-; CHECK-NEXT:    [[XL:%.*]] = and i64 [[X:%.*]], 4294967295
-; CHECK-NEXT:    [[XH:%.*]] = lshr i64 [[X]], 32
-; CHECK-NEXT:    [[YL:%.*]] = and i64 [[Y:%.*]], 4294967295
-; CHECK-NEXT:    [[YH:%.*]] = lshr i64 [[Y]], 32
-; CHECK-NEXT:    [[T0:%.*]] = mul nuw i64 [[YL]], [[XL]]
-; CHECK-NEXT:    [[T1:%.*]] = mul nuw i64 [[YL]], [[XH]]
-; CHECK-NEXT:    [[T2:%.*]] = mul nuw i64 [[YH]], [[XL]]
-; CHECK-NEXT:    [[T3:%.*]] = mul nuw i64 [[YH]], [[XH]]
-; CHECK-NEXT:    [[T0H:%.*]] = lshr i64 [[T0]], 32
-; CHECK-NEXT:    [[U0:%.*]] = add i64 [[T0H]], [[T1]]
-; CHECK-NEXT:    [[U0L:%.*]] = and i64 [[U0]], 4294967295
-; CHECK-NEXT:    [[U0H:%.*]] = lshr i64 [[U0]], 32
-; CHECK-NEXT:    [[U1:%.*]] = add i64 [[U0L]], [[T2]]
-; CHECK-NEXT:    [[U1H:%.*]] = lshr i64 [[U1]], 32
-; CHECK-NEXT:    [[U2:%.*]] = add i64 [[U0H]], [[T3]]
-; CHECK-NEXT:    [[HI:%.*]] = add i64 [[U2]], [[U1H]]
-; CHECK-NEXT:    ret i64 [[HI]]
+; CHECK-NEXT:    [[FULLMUL_X:%.*]] = zext i64 [[X:%.*]] to i128
+; CHECK-NEXT:    [[FULLMUL_Y:%.*]] = zext i64 [[Y:%.*]] to i128
+; CHECK-NEXT:    [[FULLMUL:%.*]] = mul nuw i128 [[FULLMUL_X]], [[FULLMUL_Y]]
+; CHECK-NEXT:    [[TMP1:%.*]] = lshr i128 [[FULLMUL]], 32
+; CHECK-NEXT:    [[FULLMUL_HI:%.*]] = trunc i128 [[TMP1]] to i64
+; CHECK-NEXT:    ret i64 [[FULLMUL_HI]]
 ;
   %xl = and i64 %x, 4294967295
   %xh = lshr i64 %x, 32
@@ -453,21 +353,8 @@ define i64 @umulh_64(i64 %x, i64 %y) {
 
 define i64 @mullo(i64 %x, i64 %y) {
 ; CHECK-LABEL: @mullo(
-; CHECK-NEXT:    [[XL:%.*]] = and i64 [[X:%.*]], 4294967295
-; CHECK-NEXT:    [[XH:%.*]] = lshr i64 [[X]], 32
-; CHECK-NEXT:    [[YL:%.*]] = and i64 [[Y:%.*]], 4294967295
-; CHECK-NEXT:    [[YH:%.*]] = lshr i64 [[Y]], 32
-; CHECK-NEXT:    [[T0:%.*]] = mul nuw i64 [[YL]], [[XL]]
-; CHECK-NEXT:    [[T1:%.*]] = mul nuw i64 [[YL]], [[XH]]
-; CHECK-NEXT:    [[T2:%.*]] = mul nuw i64 [[YH]], [[XL]]
-; CHECK-NEXT:    [[T0L:%.*]] = and i64 [[T0]], 4294967295
-; CHECK-NEXT:    [[T0H:%.*]] = lshr i64 [[T0]], 32
-; CHECK-NEXT:    [[U0:%.*]] = add i64 [[T0H]], [[T1]]
-; CHECK-NEXT:    [[U0L:%.*]] = and i64 [[U0]], 4294967295
-; CHECK-NEXT:    [[U1:%.*]] = add i64 [[U0L]], [[T2]]
-; CHECK-NEXT:    [[U1LS:%.*]] = shl i64 [[U1]], 32
-; CHECK-NEXT:    [[LO:%.*]] = or i64 [[U1LS]], [[T0L]]
-; CHECK-NEXT:    ret i64 [[LO]]
+; CHECK-NEXT:    [[MUL:%.*]] = mul i64 [[X:%.*]], [[Y:%.*]]
+; CHECK-NEXT:    ret i64 [[MUL]]
 ;
   %xl = and i64 %x, 4294967295
   %xh = lshr i64 %x, 32
@@ -499,21 +386,7 @@ define i64 @mullo_duplicate(i64 %x, i64 %y) {
 ; CHECK-LABEL: @mullo_duplicate(
 ; CHECK-NEXT:    [[DUPLICATED_MUL:%.*]] = mul i64 [[X:%.*]], [[Y:%.*]]
 ; CHECK-NEXT:    call void @eat_i64(i64 [[DUPLICATED_MUL]])
-; CHECK-NEXT:    [[XL:%.*]] = and i64 [[X]], 4294967295
-; CHECK-NEXT:    [[XH:%.*]] = lshr i64 [[X]], 32
-; CHECK-NEXT:    [[YL:%.*]] = and i64 [[Y]], 4294967295
-; CHECK-NEXT:    [[YH:%.*]] = lshr i64 [[Y]], 32
-; CHECK-NEXT:    [[T0:%.*]] = mul nuw i64 [[YL]], [[XL]]
-; CHECK-NEXT:    [[T1:%.*]] = mul nuw i64 [[YL]], [[XH]]
-; CHECK-NEXT:    [[T2:%.*]] = mul nuw i64 [[YH]], [[XL]]
-; CHECK-NEXT:    [[T0L:%.*]] = and i64 [[T0]], 4294967295
-; CHECK-NEXT:    [[T0H:%.*]] = lshr i64 [[T0]], 32
-; CHECK-NEXT:    [[U0:%.*]] = add i64 [[T0H]], [[T1]]
-; CHECK-NEXT:    [[U0L:%.*]] = and i64 [[U0]], 4294967295
-; CHECK-NEXT:    [[U1:%.*]] = add i64 [[U0L]], [[T2]]
-; CHECK-NEXT:    [[U1LS:%.*]] = shl i64 [[U1]], 32
-; CHECK-NEXT:    [[LO:%.*]] = or i64 [[U1LS]], [[T0L]]
-; CHECK-NEXT:    ret i64 [[LO]]
+; CHECK-NEXT:    ret i64 [[DUPLICATED_MUL]]
 ;
   %duplicated_mul = mul i64 %x, %y
   call void @eat_i64(i64 %duplicated_mul)
@@ -546,27 +419,11 @@ define { i64, i64 } @mul_full_64_duplicate(i64 %x, i64 %y) {
 ; CHECK-NEXT:    [[YY:%.*]] = zext i64 [[Y:%.*]] to i128
 ; CHECK-NEXT:    [[DUPLICATED_MUL:%.*]] = mul i128 [[XX]], [[YY]]
 ; CHECK-NEXT:    call void @eat_i128(i128 [[DUPLICATED_MUL]])
-; CHECK-NEXT:    [[XL:%.*]] = and i64 [[X]], 4294967295
-; CHECK-NEXT:    [[XH:%.*]] = lshr i64 [[X]], 32
-; CHECK-NEXT:    [[YL:%.*]] = and i64 [[Y]], 4294967295
-; CHECK-NEXT:    [[YH:%.*]] = lshr i64 [[Y]], 32
-; CHECK-NEXT:    [[T0:%.*]] = mul nuw i64 [[YL]], [[XL]]
-; CHECK-NEXT:    [[T1:%.*]] = mul nuw i64 [[YL]], [[XH]]
-; CHECK-NEXT:    [[T2:%.*]] = mul nuw i64 [[YH]], [[XL]]
-; CHECK-NEXT:    [[T3:%.*]] = mul nuw i64 [[YH]], [[XH]]
-; CHECK-NEXT:    [[T0L:%.*]] = and i64 [[T0]], 4294967295
-; CHECK-NEXT:    [[T0H:%.*]] = lshr i64 [[T0]], 32
-; CHECK-NEXT:    [[U0:%.*]] = add i64 [[T0H]], [[T1]]
-; CHECK-NEXT:    [[U0L:%.*]] = and i64 [[U0]], 4294967295
-; CHECK-NEXT:    [[U0H:%.*]] = lshr i64 [[U0]], 32
-; CHECK-NEXT:    [[U1:%.*]] = add i64 [[U0L]], [[T2]]
-; CHECK-NEXT:    [[U1LS:%.*]] = shl i64 [[U1]], 32
-; CHECK-NEXT:    [[U1H:%.*]] = lshr i64 [[U1]], 32
-; CHECK-NEXT:    [[U2:%.*]] = add i64 [[U0H]], [[T3]]
-; CHECK-NEXT:    [[LO:%.*]] = or i64 [[U1LS]], [[T0L]]
-; CHECK-NEXT:    [[HI:%.*]] = add i64 [[U2]], [[U1H]]
-; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i64, i64 } undef, i64 [[LO]], 0
-; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i64, i64 } [[RES_LO]], i64 [[HI]], 1
+; CHECK-NEXT:    [[FULLMUL_LO:%.*]] = trunc i128 [[DUPLICATED_MUL]] to i64
+; CHECK-NEXT:    [[TMP1:%.*]] = lshr i128 [[DUPLICATED_MUL]], 32
+; CHECK-NEXT:    [[FULLMUL_HI:%.*]] = trunc i128 [[TMP1]] to i64
+; CHECK-NEXT:    [[RES_LO:%.*]] = insertvalue { i64, i64 } undef, i64 [[FULLMUL_LO]], 0
+; CHECK-NEXT:    [[RES:%.*]] = insertvalue { i64, i64 } [[RES_LO]], i64 [[FULLMUL_HI]], 1
 ; CHECK-NEXT:    ret { i64, i64 } [[RES]]
 ;
   %xx = zext i64 %x to i128
